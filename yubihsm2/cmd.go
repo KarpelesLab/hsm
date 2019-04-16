@@ -143,31 +143,35 @@ func (call CommandHandler) ResetDevice() error {
 	return call.nullResponse(NewCommand(CommandTypeReset))
 }
 
-/*
-func CreateGenerateAsymmetricKeyCommand(keyID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm) (*CommandMessage, error) {
+func (call CommandHandler) GenerateAsymmetricKey(keyID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm) (uint16, error) {
 	if len(label) > LabelLength {
-		return nil, errors.New("label is too long")
+		return 0, errors.New("label is too long")
 	}
 	if len(label) < LabelLength {
 		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
 	}
 
-	command := &CommandMessage{
-		CommandType: CommandTypeGenerateAsymmetricKey,
+	command := NewCommand(CommandTypeGenerateAsymmetricKey)
+	command.WriteValue(keyID)
+	command.Write(label)
+	command.WriteValue(domains)
+	command.WriteValue(capabilities)
+	command.WriteValue(algorithm)
+
+	resp, err := call(command)
+	if err != nil {
+		return 0, err
+	}
+	if resp.Len() != 2 {
+		return 0, errors.New("invalid response payload length")
 	}
 
-	payload := bytes.NewBuffer([]byte{})
-	binary.Write(payload, binary.BigEndian, keyID)
-	payload.Write(label)
-	binary.Write(payload, binary.BigEndian, domains)
-	binary.Write(payload, binary.BigEndian, capabilities)
-	binary.Write(payload, binary.BigEndian, algorithm)
+	resp.ReadValue(&keyID)
 
-	command.Data = payload.Bytes()
-
-	return command, nil
+	return keyID, nil
 }
 
+/*
 func CreateSignDataEddsaCommand(keyID uint16, data []byte) (*CommandMessage, error) {
 	command := &CommandMessage{
 		CommandType: CommandTypeSignDataEddsa,
@@ -270,5 +274,49 @@ func CreateGenerateWrapKeyCommand(objectID uint16, label []byte, domains uint16,
 	command.Data = payload.Bytes()
 
 	return command, nil
+}
+
+func parseSignDataEddsaResponse(payload []byte) (Response, error) {
+	return &SignDataEddsaResponse{
+		Signature: payload,
+	}, nil
+}
+
+func parseSignDataEcdsaResponse(payload []byte) (Response, error) {
+	return &SignDataEcdsaResponse{
+		Signature: payload,
+	}, nil
+}
+
+func parsePutAsymmetricKeyResponse(payload []byte) (Response, error) {
+	if len(payload) != 2 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	var keyID uint16
+	err := binary.Read(bytes.NewReader(payload), binary.BigEndian, &keyID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PutAsymmetricKeyResponse{
+		KeyID: keyID,
+	}, nil
+}
+
+func parseGetPubKeyResponse(payload []byte) (Response, error) {
+	if len(payload) < 1 {
+		return nil, errors.New("invalid response payload length")
+	}
+	return &GetPubKeyResponse{
+		Algorithm: Algorithm(payload[0]),
+		KeyData:   payload[1:],
+	}, nil
+}
+
+func parseEchoResponse(payload []byte) (Response, error) {
+	return &EchoResponse{
+		Data: payload,
+	}, nil
 }
 */
