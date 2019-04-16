@@ -73,20 +73,20 @@ const (
 	CommandTypeChangeAuthKey         CommandType = 0x6c
 
 	// Errors
-	ErrorCodeOK                ErrorCode = 0x00
-	ErrorCodeInvalidCommand    ErrorCode = 0x01
-	ErrorCodeInvalidData       ErrorCode = 0x02
-	ErrorCodeInvalidSession    ErrorCode = 0x03
-	ErrorCodeAuthFail          ErrorCode = 0x04
-	ErrorCodeSessionFull       ErrorCode = 0x05
-	ErrorCodeSessionFailed     ErrorCode = 0x06
-	ErrorCodeStorageFailed     ErrorCode = 0x07
-	ErrorCodeWrongLength       ErrorCode = 0x08
-	ErrorCodeInvalidPermission ErrorCode = 0x09
-	ErrorCodeLogFull           ErrorCode = 0x0a
-	ErrorCodeObjectNotFound    ErrorCode = 0x0b
-	ErrorCodeIDIllegal         ErrorCode = 0x0c
-	ErrorCodeCommandUnexecuted ErrorCode = 0xff
+	ErrOK                ErrorCode = 0x00
+	ErrInvalidCommand    ErrorCode = 0x01
+	ErrInvalidData       ErrorCode = 0x02
+	ErrInvalidSession    ErrorCode = 0x03
+	ErrAuthFail          ErrorCode = 0x04
+	ErrSessionFull       ErrorCode = 0x05
+	ErrSessionFailed     ErrorCode = 0x06
+	ErrStorageFailed     ErrorCode = 0x07
+	ErrWrongLength       ErrorCode = 0x08
+	ErrInvalidPermission ErrorCode = 0x09
+	ErrLogFull           ErrorCode = 0x0a
+	ErrObjectNotFound    ErrorCode = 0x0b
+	ErrIDIllegal         ErrorCode = 0x0c
+	ErrCommandUnexecuted ErrorCode = 0xff
 
 	// Capabilities
 	GetOpaque             Capability = 0x0000000000000001

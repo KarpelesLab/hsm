@@ -2,41 +2,37 @@ package yubihsm2
 
 import "fmt"
 
-type Error struct {
-	Code ErrorCode
-}
-
 // Error formats a card error message into a human readable format
-func (e *Error) Error() string {
+func (e ErrorCode) Error() string {
 	message := ""
-	switch e.Code {
-	case ErrorCodeOK:
+	switch e {
+	case ErrOK:
 		message = "OK"
-	case ErrorCodeInvalidCommand:
+	case ErrInvalidCommand:
 		message = "Invalid command"
-	case ErrorCodeInvalidData:
+	case ErrInvalidData:
 		message = "Invalid data"
-	case ErrorCodeInvalidSession:
+	case ErrInvalidSession:
 		message = "Invalid session"
-	case ErrorCodeAuthFail:
+	case ErrAuthFail:
 		message = "Auth fail"
-	case ErrorCodeSessionFull:
+	case ErrSessionFull:
 		message = "Session full"
-	case ErrorCodeSessionFailed:
+	case ErrSessionFailed:
 		message = "Session failed"
-	case ErrorCodeStorageFailed:
+	case ErrStorageFailed:
 		message = "Storage failed"
-	case ErrorCodeWrongLength:
+	case ErrWrongLength:
 		message = "Wrong length"
-	case ErrorCodeInvalidPermission:
+	case ErrInvalidPermission:
 		message = "Invalid permission"
-	case ErrorCodeLogFull:
+	case ErrLogFull:
 		message = "Log full"
-	case ErrorCodeObjectNotFound:
+	case ErrObjectNotFound:
 		message = "Object not found"
-	case ErrorCodeIDIllegal:
+	case ErrIDIllegal:
 		message = "ID illegal"
-	case ErrorCodeCommandUnexecuted:
+	case ErrCommandUnexecuted:
 		message = "Command unexecuted"
 	default:
 		message = "unknown"

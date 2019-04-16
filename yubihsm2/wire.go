@@ -65,7 +65,7 @@ func parseResponse(data []byte, expect CommandType) (*WireResponse, error) {
 		if len(payload) != 1 {
 			return nil, errors.New("invalid response payload length")
 		}
-		return nil, &Error{Code: ErrorCode(payload[0])}
+		return nil, ErrorCode(payload[0])
 	}
 
 	transactionType = transactionType & 0x7f
