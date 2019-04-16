@@ -1,9 +1,51 @@
 # YubiHSM2
 
-Code comes partially from: https://github.com/certusone/yubihsm-go
+[GoDoc](https://godoc.org/github.com/MagicalTux/hsm/yubihsm2)
 
-Because of this, Apache license is assumed.
+Code comes initally from: https://github.com/certusone/yubihsm-go (Apache 2.0 license)
 
-Merged: https://github.com/certusone/yubihsm-go/pull/3
+# Details
 
-Also, code has been moved to a single Go module for simplicity.
+YubiHSM2 is a minimal implementation of the securechannel and connector protocol of the YubiHSM2.
+
+It also implements a simple SessionManager which keeps connections alive and swaps them if the maximum number of
+messages is depleted.
+
+Currently the following commands are implemented:
+
+ * Reset
+ * GenerateAsymmetricKey
+ * SignDataEddsa
+ * PutAsymmetricKey
+ * GetPubKey
+ * Echo
+ * Authentication & Session related commands
+ * And many more, see cmd.go
+
+Implementing new commands is really easy. Please consult cmd.go.
+
+Please submit a PR if you have implemented new commands.
+
+## Example of usage
+
+```
+c := connector.NewHTTPConnector("localhost:12345")
+sm, err := yubihsm.NewSessionManager(c, 1, "password")
+if err != nil {
+	panic(err)
+}
+
+echoMessage := []byte("test")
+
+res, err := sm.Echo(echoMessage)
+if err != nil {
+	panic(err)
+}
+
+if bytes.Equal(res, echoMessage) {
+	println("successfully echoed data")
+} else {
+	panic(errors.New("echoed message did not equal requested message"))
+}
+
+```
