@@ -28,4 +28,10 @@ type (
 		// KeyData can contain different formats depending on the algorithm according to the YubiHSM2 documentation.
 		KeyData []byte
 	}
+
+	ListObjectsResponse struct {
+		ObjectID uint16
+		Type     ObjectType
+		Sequence uint8
+	}
 )

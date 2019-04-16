@@ -27,3 +27,7 @@ func NewSoftwareHSM() (*SoftwareHSM, error) {
 
 	return r, nil
 }
+
+func (h *SoftwareHSM) Ready() bool {
+	return h.db != nil
+}

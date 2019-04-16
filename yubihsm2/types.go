@@ -5,6 +5,11 @@ import "errors"
 type (
 	CommandType uint8
 	ErrorCode   uint8
+	ObjectType  uint8
+	ObjectID    uint16
+	Domain      uint16
+	Label       []byte
+	Capability  uint64
 )
 
 var (
@@ -84,77 +89,77 @@ const (
 	ErrorCodeCommandUnexecuted ErrorCode = 0xff
 
 	// Capabilities
-	CapabilityGetOpaque             uint64 = 0x0000000000000001
-	CapabilityPutOpaque             uint64 = 0x0000000000000002
-	CapabilityPutAuthKey            uint64 = 0x0000000000000004
-	CapabilityPutAsymmetric         uint64 = 0x0000000000000008
-	CapabilityAsymmetricGen         uint64 = 0x0000000000000010
-	CapabilityAsymmetricSignPkcs    uint64 = 0x0000000000000020
-	CapabilityAsymmetricSignPss     uint64 = 0x0000000000000040
-	CapabilityAsymmetricSignEcdsa   uint64 = 0x0000000000000080
-	CapabilityAsymmetricSignEddsa   uint64 = 0x0000000000000100
-	CapabilityAsymmetricDecryptPkcs uint64 = 0x0000000000000200
-	CapabilityAsymmetricDecryptOaep uint64 = 0x0000000000000400
-	CapabilityAsymmetricDecryptEcdh uint64 = 0x0000000000000800
-	CapabilityExportWrapped         uint64 = 0x0000000000001000
-	CapabilityImportWrapped         uint64 = 0x0000000000002000
-	CapabilityPutWrapKey            uint64 = 0x0000000000004000
-	CapabilityGenerateWrapKey       uint64 = 0x0000000000008000
-	CapabilityExportUnderWrap       uint64 = 0x0000000000010000
-	CapabilityPutOption             uint64 = 0x0000000000020000
-	CapabilityGetOption             uint64 = 0x0000000000040000
-	CapabilityGetRandomness         uint64 = 0x0000000000080000
-	CapabilityPutHmacKey            uint64 = 0x0000000000100000
-	CapabilityHmacKeyGenerate       uint64 = 0x0000000000200000
-	CapabilityHmacData              uint64 = 0x0000000000400000
-	CapabilityHmacVerify            uint64 = 0x0000000000800000
-	CapabilityAudit                 uint64 = 0x0000000001000000
-	CapabilitySshCertify            uint64 = 0x0000000002000000
-	CapabilityGetTemplate           uint64 = 0x0000000004000000
-	CapabilityPutTemplate           uint64 = 0x0000000008000000
-	CapabilityReset                 uint64 = 0x0000000010000000
-	CapabilityOtpDecrypt            uint64 = 0x0000000020000000
-	CapabilityOtpAeadCreate         uint64 = 0x0000000040000000
-	CapabilityOtpAeadRandom         uint64 = 0x0000000080000000
-	CapabilityOtpAeadRewrapFrom     uint64 = 0x0000000100000000
-	CapabilityOtpAeadRewrapTo       uint64 = 0x0000000200000000
-	CapabilityAttest                uint64 = 0x0000000400000000
-	CapabilityPutOtpAeadKey         uint64 = 0x0000000800000000
-	CapabilityGenerateOtpAeadKey    uint64 = 0x0000001000000000
-	CapabilityWrapData              uint64 = 0x0000002000000000
-	CapabilityUnwrapData            uint64 = 0x0000004000000000
-	CapabilityDeleteOpaque          uint64 = 0x0000008000000000
-	CapabilityDeleteAuthKey         uint64 = 0x0000010000000000
-	CapabilityDeleteAsymmetric      uint64 = 0x0000020000000000
-	CapabilityDeleteWrapKey         uint64 = 0x0000040000000000
-	CapabilityDeleteHmacKey         uint64 = 0x0000080000000000
-	CapabilityDeleteTemplate        uint64 = 0x0000100000000000
-	CapabilityDeleteOtpAeadKey      uint64 = 0x0000200000000000
+	CapabilityGetOpaque             Capability = 0x0000000000000001
+	CapabilityPutOpaque                        = 0x0000000000000002
+	CapabilityPutAuthKey                       = 0x0000000000000004
+	CapabilityPutAsymmetric                    = 0x0000000000000008
+	CapabilityAsymmetricGen                    = 0x0000000000000010
+	CapabilityAsymmetricSignPkcs               = 0x0000000000000020
+	CapabilityAsymmetricSignPss                = 0x0000000000000040
+	CapabilityAsymmetricSignEcdsa              = 0x0000000000000080
+	CapabilityAsymmetricSignEddsa              = 0x0000000000000100
+	CapabilityAsymmetricDecryptPkcs            = 0x0000000000000200
+	CapabilityAsymmetricDecryptOaep            = 0x0000000000000400
+	CapabilityAsymmetricDecryptEcdh            = 0x0000000000000800
+	CapabilityExportWrapped                    = 0x0000000000001000
+	CapabilityImportWrapped                    = 0x0000000000002000
+	CapabilityPutWrapKey                       = 0x0000000000004000
+	CapabilityGenerateWrapKey                  = 0x0000000000008000
+	CapabilityExportUnderWrap                  = 0x0000000000010000
+	CapabilityPutOption                        = 0x0000000000020000
+	CapabilityGetOption                        = 0x0000000000040000
+	CapabilityGetRandomness                    = 0x0000000000080000
+	CapabilityPutHmacKey                       = 0x0000000000100000
+	CapabilityHmacKeyGenerate                  = 0x0000000000200000
+	CapabilityHmacData                         = 0x0000000000400000
+	CapabilityHmacVerify                       = 0x0000000000800000
+	CapabilityAudit                            = 0x0000000001000000
+	CapabilitySshCertify                       = 0x0000000002000000
+	CapabilityGetTemplate                      = 0x0000000004000000
+	CapabilityPutTemplate                      = 0x0000000008000000
+	CapabilityReset                            = 0x0000000010000000
+	CapabilityOtpDecrypt                       = 0x0000000020000000
+	CapabilityOtpAeadCreate                    = 0x0000000040000000
+	CapabilityOtpAeadRandom                    = 0x0000000080000000
+	CapabilityOtpAeadRewrapFrom                = 0x0000000100000000
+	CapabilityOtpAeadRewrapTo                  = 0x0000000200000000
+	CapabilityAttest                           = 0x0000000400000000
+	CapabilityPutOtpAeadKey                    = 0x0000000800000000
+	CapabilityGenerateOtpAeadKey               = 0x0000001000000000
+	CapabilityWrapData                         = 0x0000002000000000
+	CapabilityUnwrapData                       = 0x0000004000000000
+	CapabilityDeleteOpaque                     = 0x0000008000000000
+	CapabilityDeleteAuthKey                    = 0x0000010000000000
+	CapabilityDeleteAsymmetric                 = 0x0000020000000000
+	CapabilityDeleteWrapKey                    = 0x0000040000000000
+	CapabilityDeleteHmacKey                    = 0x0000080000000000
+	CapabilityDeleteTemplate                   = 0x0000100000000000
+	CapabilityDeleteOtpAeadKey                 = 0x0000200000000000
 
 	// Domains
-	Domain1  uint16 = 0x0001
-	Domain2  uint16 = 0x0002
-	Domain3  uint16 = 0x0004
-	Domain4  uint16 = 0x0008
-	Domain5  uint16 = 0x0010
-	Domain6  uint16 = 0x0020
-	Domain7  uint16 = 0x0040
-	Domain8  uint16 = 0x0080
-	Domain9  uint16 = 0x0100
-	Domain10 uint16 = 0x0200
-	Domain11 uint16 = 0x0400
-	Domain12 uint16 = 0x0800
-	Domain13 uint16 = 0x1000
-	Domain14 uint16 = 0x2000
-	Domain15 uint16 = 0x4000
-	Domain16 uint16 = 0x8000
+	Domain1  Domain = 0x0001
+	Domain2         = 0x0002
+	Domain3         = 0x0004
+	Domain4         = 0x0008
+	Domain5         = 0x0010
+	Domain6         = 0x0020
+	Domain7         = 0x0040
+	Domain8         = 0x0080
+	Domain9         = 0x0100
+	Domain10        = 0x0200
+	Domain11        = 0x0400
+	Domain12        = 0x0800
+	Domain13        = 0x1000
+	Domain14        = 0x2000
+	Domain15        = 0x4000
+	Domain16        = 0x8000
 
 	// object types
-	ObjectTypeOpaque            uint8 = 0x01
-	ObjectTypeAuthenticationKey uint8 = 0x02
-	ObjectTypeAsymmetricKey     uint8 = 0x03
-	ObjectTypeWrapKey           uint8 = 0x04
-	ObjectTypeHmacKey           uint8 = 0x05
-	ObjectTypeTemplate          uint8 = 0x06
-	ObjectTypeOtpAeadKey        uint8 = 0x07
+	ObjectTypeOpaque            ObjectType = 0x01
+	ObjectTypeAuthenticationKey            = 0x02
+	ObjectTypeAsymmetricKey                = 0x03
+	ObjectTypeWrapKey                      = 0x04
+	ObjectTypeHmacKey                      = 0x05
+	ObjectTypeTemplate                     = 0x06
+	ObjectTypeOtpAeadKey                   = 0x07
 )

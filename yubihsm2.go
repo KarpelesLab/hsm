@@ -9,6 +9,10 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+type YubiHSM2 struct {
+	sm *yubihsm2.SessionManager
+}
+
 func NewYubiHSM2() (HSM, error) {
 	c := yubihsm2.NewHTTPConnector("localhost:12345")
 	status, err := c.GetStatus()
@@ -38,5 +42,9 @@ func NewYubiHSM2() (HSM, error) {
 
 	log.Printf("success: %s", res)
 
-	return sm, nil
+	return &YubiHSM2{sm}, nil
+}
+
+func (h *YubiHSM2) Ready() bool {
+	return h.sm != nil
 }

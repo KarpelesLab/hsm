@@ -244,6 +244,63 @@ func (call CommandHandler) GenerateWrapKey(objectID uint16, label []byte, domain
 	return objectID, nil
 }
 
+func (call CommandHandler) ListObjects(filters ...interface{}) ([]*ListObjectsResponse, error) {
+	command := NewCommand(CommandTypeListObjects)
+
+	for _, f := range filters {
+		switch v := f.(type) {
+		case ObjectID:
+			command.WriteValue(uint8(0x01))
+			command.WriteValue(uint16(v))
+		case ObjectType:
+			command.WriteValue(uint8(0x02))
+			command.WriteValue(uint8(v))
+		case Domain:
+			command.WriteValue(uint8(0x03))
+			command.WriteValue(uint16(v))
+		case Capability:
+			command.WriteValue(uint8(0x04))
+			command.WriteValue(uint64(v))
+		case Algorithm:
+			command.WriteValue(uint8(0x05))
+			command.WriteValue(uint8(v))
+		case Label:
+			command.WriteValue(uint8(0x06))
+			if err := writeLabel(command, v); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	res, err := call(command)
+
+	var ret []*ListObjectsResponse
+
+	for {
+		v := new(ListObjectsResponse)
+		err = res.ReadValue((*uint16)(&v.ObjectID))
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+
+		err = res.ReadValue((*uint8)(&v.Type))
+		if err != nil {
+			return nil, err
+		}
+		err = res.ReadValue(&v.Sequence)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, v)
+	}
+
+	return ret, nil
+}
+
 func (call CommandHandler) ResetDevice() error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Reset_Device.html
 	return call.nullResponse(NewCommand(CommandTypeReset))
