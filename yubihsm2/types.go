@@ -1,9 +1,15 @@
 package yubihsm2
 
+import "errors"
+
 type (
 	CommandType uint8
 	ErrorCode   uint8
 	Algorithm   uint8
+)
+
+var (
+	ErrInvalidResponseType = errors.New("yubihsm2: response has invalid type")
 )
 
 const (

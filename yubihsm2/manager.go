@@ -1,35 +1,29 @@
 package yubihsm2
 
 import (
-	"bytes"
 	"errors"
+	"log"
 	"sync"
 	"time"
 )
 
-type (
-	// SessionManager manages a pool of authenticated secure sessions with a YubiHSM2
-	SessionManager struct {
-		session   *SecureChannel
-		lock      sync.Mutex
-		connector Connector
-		authKeyID uint16
-		password  string
+// SessionManager manages a pool of authenticated secure sessions with a YubiHSM2
+type SessionManager struct {
+	session   *SecureChannel
+	lock      sync.Mutex
+	connector Connector
+	authKeyID uint16
+	password  string
 
-		creationWait sync.WaitGroup
-		destroyed    bool
-		keepAlive    *time.Timer
-		swapping     bool
-	}
-)
+	creationWait sync.WaitGroup
+	destroyed    bool
+	keepAlive    *time.Timer
+	swapping     bool
+}
 
-var (
-	echoPayload = []byte("keepalive")
-)
+var echoPayload = []byte("keepalive")
 
-const (
-	pingInterval = 15 * time.Second
-)
+const pingInterval = 15 * time.Second
 
 // NewSessionManager creates a new instance of the SessionManager with poolSize connections.
 // Wait on channel Connected with a timeout to wait for active connections to be ready.
@@ -54,20 +48,11 @@ func NewSessionManager(connector Connector, authKeyID uint16, password string) (
 
 func (s *SessionManager) pingRoutine() {
 	for range s.keepAlive.C {
-		command, _ := CreateEchoCommand(echoPayload)
-
-		resp, err := s.SendEncryptedCommand(command)
-		if err == nil {
-			parsedResp, matched := resp.(*EchoResponse)
-			if !matched {
-				err = errors.New("invalid response type")
-			}
-			if !bytes.Equal(parsedResp.Data, echoPayload) {
-				err = errors.New("echoed data is invalid")
-			}
+		_, err := s.Echo(echoPayload)
+		if err != nil {
+			log.Printf("yubihsm2: failed to ping: %s", err)
 		}
 
-		println("pinged")
 		s.keepAlive.Reset(pingInterval)
 	}
 }
@@ -108,7 +93,7 @@ func (s *SessionManager) checkSessionHealth() {
 
 // SendEncryptedCommand sends an encrypted & authenticated command to the HSM
 // and returns the decrypted and parsed response.
-func (s *SessionManager) SendEncryptedCommand(c *CommandMessage) (Response, error) {
+func (s *SessionManager) SendEncryptedCommand(c []byte) ([]byte, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

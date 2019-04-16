@@ -159,3 +159,27 @@ func CreateEchoCommand(data []byte) (*CommandMessage, error) {
 
 	return command, nil
 }
+
+func CreateGenerateWrapKeyCommand(objectID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm, delegatedCapabilities uint64) (*CommandMessage, error) {
+	if len(label) > LabelLength {
+		return nil, errors.New("label is too long")
+	}
+	if len(label) < LabelLength {
+		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
+	}
+	command := &CommandMessage{
+		CommandType: CommandTypeGenerateWrapKey,
+	}
+
+	payload := &bytes.Buffer{}
+	binary.Write(payload, binary.BigEndian, objectID)
+	payload.Write(label)
+	binary.Write(payload, binary.BigEndian, domains)
+	binary.Write(payload, binary.BigEndian, capabilities)
+	binary.Write(payload, binary.BigEndian, algorithm)
+	binary.Write(payload, binary.BigEndian, delegatedCapabilities)
+
+	command.Data = payload.Bytes()
+
+	return command, nil
+}

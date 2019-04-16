@@ -1,8 +1,6 @@
 package hsm
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"syscall"
@@ -27,24 +25,12 @@ func NewYubiHSM2() (HSM, error) {
 
 	log.Printf("sending echo")
 	echoMessage := []byte("test")
-	command, err := yubihsm2.CreateEchoCommand(echoMessage)
+	res, err := sm.Echo(echoMessage)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := sm.SendEncryptedCommand(command)
-	if err != nil {
-		return nil, err
-	}
-
-	parsedResp, matched := resp.(*yubihsm2.EchoResponse)
-	if !matched {
-		return nil, errors.New("invalid response")
-	}
-
-	if bytes.Equal(parsedResp.Data, echoMessage) {
-		log.Printf("success")
-	}
+	log.Printf("success: %s", res)
 
 	return sm, nil
 }
