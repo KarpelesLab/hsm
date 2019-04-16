@@ -49,7 +49,7 @@ type WireResponse struct {
 	Payload     []byte
 }
 
-func wireResponse(data []byte, expect CommandType) (*WireResponse, error) {
+func parseResponse(data []byte, expect CommandType) (*WireResponse, error) {
 	if len(data) < 3 {
 		return nil, errors.New("invalid response")
 	}

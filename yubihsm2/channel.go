@@ -169,7 +169,7 @@ func (s *SecureChannel) SendCommand(c *Command) (*WireResponse, error) {
 		return nil, err
 	}
 
-	return wireResponse(resp, c.CommandType)
+	return parseResponse(resp, c.CommandType)
 }
 
 // SendEncryptedCommand sends an encrypted & authenticated command to the HSM
@@ -250,7 +250,7 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	decrypter.CryptBlocks(decryptedResponse, sessionMessage.EncryptedData)
 
 	// Parse and return the wrapped response
-	return wireResponse(unpad(decryptedResponse), command.CommandType)
+	return parseResponse(unpad(decryptedResponse), command.CommandType)
 }
 
 func (s *SecureChannel) Close() error {
@@ -264,7 +264,6 @@ func (s *SecureChannel) Close() error {
 
 // sendMACCommand sends a MAC authenticated command to the HSM and returns a parsed response
 func (s *SecureChannel) sendMACCommand(c *Command) (*WireResponse, error) {
-
 	// Set command sessionID to this session
 	c.SessionID = &s.ID
 

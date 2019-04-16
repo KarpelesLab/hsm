@@ -6,10 +6,8 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-type (
-	// AuthKey is a key to authenticate with the HSM
-	AuthKey []byte
-)
+// AuthKey is a key to authenticate with the HSM
+type AuthKey []byte
 
 const (
 	authKeyLength     = 32

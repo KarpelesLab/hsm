@@ -8,12 +8,10 @@ import (
 	"strings"
 )
 
-type (
-	// HTTPConnector implements the HTTP based connection with the YubiHSM2 connector
-	HTTPConnector struct {
-		URL string
-	}
-)
+// HTTPConnector implements the HTTP based connection with the YubiHSM2 connector
+type HTTPConnector struct {
+	URL string
+}
 
 // NewHTTPConnector creates a new instance of HTTPConnector
 func NewHTTPConnector(url string) *HTTPConnector {
@@ -30,6 +28,7 @@ func (c *HTTPConnector) Request(command *Command) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("server returned non OK status code %d", res.StatusCode)
@@ -49,6 +48,7 @@ func (c *HTTPConnector) GetStatus() (*StatusResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -57,18 +57,22 @@ func (c *HTTPConnector) GetStatus() (*StatusResponse, error) {
 	bodyString := string(data)
 	pairs := strings.Split(bodyString, "\n")
 
-	var values []string
+	values := make(map[string]string)
 	for _, pair := range pairs {
-		values = append(values, strings.Split(pair, "=")...)
+		pos := strings.Index(pair, "=")
+		if pos == -1 {
+			continue
+		}
+		values[pair[:pos]] = pair[pos+1:]
 	}
 
 	status := &StatusResponse{}
-	status.Status = Status(values[1])
-	status.Serial = values[3]
-	status.Version = values[5]
-	status.Pid = values[7]
-	status.Address = values[9]
-	status.Port = values[11]
+	status.Status = Status(values["status"])
+	status.Serial = values["serial"]
+	status.Version = values["version"]
+	status.Pid = values["pid"]
+	status.Address = values["address"]
+	status.Port = values["port"]
 
 	return status, nil
 }
