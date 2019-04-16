@@ -211,7 +211,7 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	encrypter.CryptBlocks(encryptedCommand, commandData)
 
 	// Send the wrapped command in a SessionMessage
-	sessMsg := NewCommand(CommandTypeSessionMessage)
+	sessMsg := NewCommand(CmdSessionMessage)
 	sessMsg.Write(encryptedCommand)
 
 	resp, err := s.sendMACCommand(sessMsg)
@@ -229,7 +229,7 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	}
 
 	// Verify MAC
-	checkCmd := NewCommand(CommandTypeSessionMessage + ResponseCommandOffset)
+	checkCmd := NewCommand(CmdSessionMessage + ResponseCommandOffset)
 	checkCmd.SessionID = &sessionMessage.SessionID
 	checkCmd.Write(sessionMessage.EncryptedData)
 

@@ -20,14 +20,14 @@ func (call CommandHandler) AuthenticateSession(hostCryptogram []byte) error {
 		return errors.New("AuthenticateSession: invalid length for hostCryptogram")
 	}
 
-	command := NewCommand(CommandTypeAuthenticateSession)
+	command := NewCommand(CmdAuthenticateSession)
 	command.Write(hostCryptogram)
 	return call.nullResponse(command)
 }
 
 func (call CommandHandler) Blink(secs uint8) error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Blink_Device.html
-	command := NewCommand(CommandTypeSetBlink)
+	command := NewCommand(CmdSetBlink)
 	command.WriteValue(secs)
 	return call.nullResponse(command)
 }
@@ -38,7 +38,7 @@ func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey
 		return 0, os.ErrInvalid
 	}
 
-	command := NewCommand(CommandTypeChangeAuthKey)
+	command := NewCommand(CmdChangeAuthKey)
 	command.WriteValue(objectId)
 	command.WriteValue(uint8(algo))
 	command.Write(encKey)
@@ -59,14 +59,14 @@ func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey
 
 func (call CommandHandler) CloseSession() error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Close_Session.html
-	return call.nullResponse(NewCommand(CommandTypeCloseSession))
+	return call.nullResponse(NewCommand(CmdCloseSession))
 }
 
 // Create Otp Aead
 
 func (call CommandHandler) CreateSession(keySetID uint16, hostChallenge []byte) (*CreateSessionResponse, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Create_Session.html
-	command := NewCommand(CommandTypeCreateSession)
+	command := NewCommand(CmdCreateSession)
 
 	command.WriteValue(keySetID)
 	command.Write(hostChallenge)
@@ -95,7 +95,7 @@ func (call CommandHandler) CreateSession(keySetID uint16, hostChallenge []byte) 
 
 func (call CommandHandler) DeleteObject(objID uint16, objType uint8) error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Delete_Object.html
-	command := NewCommand(CommandTypeDeleteObject)
+	command := NewCommand(CmdDeleteObject)
 
 	command.WriteValue(objID)
 	command.WriteValue(objType)
@@ -106,7 +106,7 @@ func (call CommandHandler) DeleteObject(objID uint16, objType uint8) error {
 // Derive Ecdh
 
 func (call CommandHandler) DeviceInfo() (*DeviceInfoResponse, error) {
-	resp, err := call(NewCommand(CommandTypeDeviceInfo))
+	resp, err := call(NewCommand(CmdDeviceInfo))
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (call CommandHandler) Echo(payload []byte) ([]byte, error) {
 		return nil, os.ErrInvalid
 	}
 
-	command := NewCommand(CommandTypeEcho)
+	command := NewCommand(CmdEcho)
 	command.Write(payload)
 
 	resp, err := call(command)
@@ -164,7 +164,7 @@ func (call CommandHandler) GenerateAsymmetricKey(keyID uint16, label []byte, dom
 		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
 	}
 
-	command := NewCommand(CommandTypeGenerateAsymmetricKey)
+	command := NewCommand(CmdGenerateAsymmetricKey)
 	command.WriteValue(keyID)
 	command.Write(label)
 	command.WriteValue(domains)
@@ -186,7 +186,7 @@ func (call CommandHandler) GenerateAsymmetricKey(keyID uint16, label []byte, dom
 
 func (call CommandHandler) GetPseudoRandom(l uint16) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Get_Pseudo_Random.html
-	command := NewCommand(CommandTypeGetPseudoRandom)
+	command := NewCommand(CmdGetPseudoRandom)
 	command.WriteValue(l)
 
 	res, err := call(command)
@@ -199,7 +199,7 @@ func (call CommandHandler) GetPseudoRandom(l uint16) ([]byte, error) {
 
 func (call CommandHandler) GetPubKey(keyID uint16) (*GetPubKeyResponse, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Get_Public_Key.html
-	command := NewCommand(CommandTypeGetPubKey)
+	command := NewCommand(CmdGetPubKey)
 	command.WriteValue(keyID)
 
 	res, err := call(command)
@@ -225,7 +225,7 @@ func (call CommandHandler) GenerateWrapKey(objectID uint16, label []byte, domain
 		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
 	}
 
-	command := NewCommand(CommandTypeGenerateWrapKey)
+	command := NewCommand(CmdGenerateWrapKey)
 	command.WriteValue(objectID)
 	command.Write(label)
 	command.WriteValue(domains)
@@ -245,7 +245,7 @@ func (call CommandHandler) GenerateWrapKey(objectID uint16, label []byte, domain
 }
 
 func (call CommandHandler) ListObjects(filters ...interface{}) ([]*ListObjectsResponse, error) {
-	command := NewCommand(CommandTypeListObjects)
+	command := NewCommand(CmdListObjects)
 
 	for _, f := range filters {
 		switch v := f.(type) {
@@ -303,12 +303,12 @@ func (call CommandHandler) ListObjects(filters ...interface{}) ([]*ListObjectsRe
 
 func (call CommandHandler) ResetDevice() error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Reset_Device.html
-	return call.nullResponse(NewCommand(CommandTypeReset))
+	return call.nullResponse(NewCommand(CmdReset))
 }
 
 func (call CommandHandler) SignDataEddsa(keyID uint16, data []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Sign_Eddsa.html
-	command := NewCommand(CommandTypeSignDataEddsa)
+	command := NewCommand(CmdSignDataEddsa)
 	command.WriteValue(keyID)
 	command.Write(data)
 
@@ -322,7 +322,7 @@ func (call CommandHandler) SignDataEddsa(keyID uint16, data []byte) ([]byte, err
 
 func (call CommandHandler) SignDataEcdsa(keyID uint16, data []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Sign_Ecdsa.html
-	command := NewCommand(CommandTypeSignDataEcdsa)
+	command := NewCommand(CmdSignDataEcdsa)
 	command.WriteValue(keyID)
 	command.Write(data)
 
@@ -343,7 +343,7 @@ func (call CommandHandler) PutAsymmetricKey(keyID uint16, label []byte, domains 
 		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
 	}
 
-	command := NewCommand(CommandTypePutAsymmetric)
+	command := NewCommand(CmdPutAsymmetric)
 	command.WriteValue(keyID)
 	command.Write(label)
 	command.WriteValue(domains)
