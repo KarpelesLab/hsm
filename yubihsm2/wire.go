@@ -13,8 +13,8 @@ type Command struct {
 	MAC         []byte
 }
 
-func NewCommand(t CommandType) *Command {
-	return &Command{CommandType: t}
+func (ct CommandType) New() *Command {
+	return &Command{CommandType: ct}
 }
 
 func (c *Command) WriteValue(v interface{}) error {
