@@ -5,7 +5,6 @@ import "errors"
 type (
 	CommandType uint8
 	ErrorCode   uint8
-	Algorithm   uint8
 )
 
 var (
@@ -83,10 +82,6 @@ const (
 	ErrorCodeObjectNotFound    ErrorCode = 0x0b
 	ErrorCodeIDIllegal         ErrorCode = 0x0c
 	ErrorCodeCommandUnexecuted ErrorCode = 0xff
-
-	// Algorithms
-	AlgorithmSecp256k1 Algorithm = 15
-	AlgorighmED25519   Algorithm = 46
 
 	// Capabilities
 	CapabilityGetOpaque             uint64 = 0x0000000000000001

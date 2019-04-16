@@ -200,6 +200,7 @@ func (call CommandHandler) SignDataEcdsa(keyID uint16, data []byte) ([]byte, err
 }
 
 func (call CommandHandler) PutAsymmetricKey(keyID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm, keyPart1 []byte, keyPart2 []byte) (uint16, error) {
+	// https://developers.yubico.com/YubiHSM2/Commands/Put_Asymmetric_Key.html
 	if len(label) > LabelLength {
 		return 0, errors.New("label is too long")
 	}
