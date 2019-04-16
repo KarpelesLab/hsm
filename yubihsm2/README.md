@@ -29,8 +29,8 @@ Please submit a PR if you have implemented new commands.
 ## Example of usage
 
 ```
-c := connector.NewHTTPConnector("localhost:12345")
-sm, err := yubihsm.NewSessionManager(c, 1, "password")
+c := yubihsm2.NewHTTPConnector("localhost:12345")
+sm, err := yubihsm2.NewSessionManager(c, 1, "password")
 if err != nil {
 	panic(err)
 }
