@@ -9,8 +9,11 @@ import (
 
 type CommandHandler func(command *Command) (*WireResponse, error)
 
-func (call CommandHandler) nullResponse(command *Command) error {
-	_, err := call(command)
+func (call CommandHandler) nullResponse(command *Command, err error) error {
+	if err != nil {
+		return err
+	}
+	_, err = call(command)
 	return err
 }
 
@@ -20,16 +23,12 @@ func (call CommandHandler) AuthenticateSession(hostCryptogram []byte) error {
 		return errors.New("AuthenticateSession: invalid length for hostCryptogram")
 	}
 
-	command := CmdAuthenticateSession.New()
-	command.Write(hostCryptogram)
-	return call.nullResponse(command)
+	return call.nullResponse(CmdAuthenticateSession.Build(hostCryptogram))
 }
 
 func (call CommandHandler) Blink(secs uint8) error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Blink_Device.html
-	command := CmdSetBlink.New()
-	command.WriteValue(secs)
-	return call.nullResponse(command)
+	return call.nullResponse(CmdSetBlink.Build(secs))
 }
 
 func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey, macKey []byte) (uint16, error) {
@@ -38,11 +37,10 @@ func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey
 		return 0, os.ErrInvalid
 	}
 
-	command := CmdChangeAuthKey.New()
-	command.WriteValue(objectId)
-	command.WriteValue(uint8(algo))
-	command.Write(encKey)
-	command.Write(macKey)
+	command, err := CmdChangeAuthKey.Build(objectId, algo, encKey, macKey)
+	if err != nil {
+		return 0, nil
+	}
 
 	res, err := call(command)
 	if err != nil {
@@ -52,24 +50,23 @@ func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey
 		return 0, errors.New("ChangeAuthKey: expected exactly 2 bytes payload")
 	}
 
-	var resObjectId uint16
-	res.ReadValue(&resObjectId)
-	return resObjectId, nil
+	res.ReadValue(&objectId)
+	return objectId, nil
 }
 
 func (call CommandHandler) CloseSession() error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Close_Session.html
-	return call.nullResponse(CmdCloseSession.New())
+	return call.nullResponse(CmdCloseSession.New(), nil)
 }
 
 // Create Otp Aead
 
 func (call CommandHandler) CreateSession(keySetID uint16, hostChallenge []byte) (*CreateSessionResponse, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Create_Session.html
-	command := CmdCreateSession.New()
-
-	command.WriteValue(keySetID)
-	command.Write(hostChallenge)
+	command, err := CmdCreateSession.Build(keySetID, hostChallenge)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := call(command)
 	if err != nil {
@@ -95,12 +92,7 @@ func (call CommandHandler) CreateSession(keySetID uint16, hostChallenge []byte) 
 
 func (call CommandHandler) DeleteObject(objID uint16, objType uint8) error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Delete_Object.html
-	command := CmdDeleteObject.New()
-
-	command.WriteValue(objID)
-	command.WriteValue(objType)
-
-	return call.nullResponse(command)
+	return call.nullResponse(CmdDeleteObject.Build(objID, objType))
 }
 
 // Derive Ecdh
@@ -141,8 +133,10 @@ func (call CommandHandler) Echo(payload []byte) ([]byte, error) {
 		return nil, os.ErrInvalid
 	}
 
-	command := CmdEcho.New()
-	command.Write(payload)
+	command, err := CmdEcho.Build(payload)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := call(command)
 	if err != nil {
@@ -303,7 +297,7 @@ func (call CommandHandler) ListObjects(filters ...interface{}) ([]*ListObjectsRe
 
 func (call CommandHandler) ResetDevice() error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Reset_Device.html
-	return call.nullResponse(CmdReset.New())
+	return call.nullResponse(CmdReset.New(), nil)
 }
 
 func (call CommandHandler) SignDataEddsa(keyID uint16, data []byte) ([]byte, error) {

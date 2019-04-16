@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 type Command struct {
@@ -15,6 +16,35 @@ type Command struct {
 
 func (ct CommandType) New() *Command {
 	return &Command{CommandType: ct}
+}
+
+func (ct CommandType) Build(data ...interface{}) (*Command, error) {
+	res := ct.New()
+
+	for _, sub := range data {
+		switch v := sub.(type) {
+		case uint8, uint16, uint32, uint64, int8, int16, int32, int64:
+			if err := res.WriteValue(v); err != nil {
+				return nil, err
+			}
+		case []byte:
+			if _, err := res.Write(v); err != nil {
+				return nil, err
+			}
+		case Label:
+			if err := writeLabel(res, v); err != nil {
+				return nil, err
+			}
+		case Algorithm, ObjectID, ObjectType, Domain, Capability:
+			if err := res.WriteValue(v); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("yubihsm2: unsupported type %T", v)
+		}
+	}
+
+	return res, nil
 }
 
 func (c *Command) WriteValue(v interface{}) error {
