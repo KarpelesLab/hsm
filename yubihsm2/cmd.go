@@ -6,7 +6,9 @@ import (
 	"os"
 )
 
-func (s *SessionManager) Echo(payload []byte) ([]byte, error) {
+type CommandHandler func(command *Command) (*WireResponse, error)
+
+func (c CommandHandler) Echo(payload []byte) ([]byte, error) {
 	if len(payload) < 1 || len(payload) > 2021 {
 		return nil, os.ErrInvalid
 	}
@@ -16,12 +18,7 @@ func (s *SessionManager) Echo(payload []byte) ([]byte, error) {
 	command := NewCommand(CommandTypeEcho)
 	command.Write(payload)
 
-	resp, err := s.SendEncryptedCommand(command)
-	if err != nil {
-		return nil, err
-	}
-
-	err = resp.Expect(CommandTypeEcho)
+	resp, err := c(command)
 	if err != nil {
 		return nil, err
 	}
@@ -31,4 +28,37 @@ func (s *SessionManager) Echo(payload []byte) ([]byte, error) {
 	}
 
 	return resp.Payload, nil
+}
+
+func (c CommandHandler) CreateSession(keySetID uint16, hostChallenge []byte) (*CreateSessionResponse, error) {
+	command := NewCommand(CommandTypeCreateSession)
+
+	command.WriteValue(keySetID)
+	command.Write(hostChallenge)
+
+	resp, err := c(command)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Len() != 17 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	payload := resp.Payload
+
+	return &CreateSessionResponse{
+		SessionID:      uint8(payload[0]),
+		CardChallenge:  payload[1:9],
+		CardCryptogram: payload[9:],
+	}, nil
+}
+
+func (c CommandHandler) AuthenticateSession(hostCryptogram []byte) error {
+	command := NewCommand(CommandTypeAuthenticateSession)
+	command.Write(hostCryptogram)
+
+	_, err := c(command)
+
+	return err
 }

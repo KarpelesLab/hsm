@@ -23,11 +23,8 @@ func NewHTTPConnector(url string) *HTTPConnector {
 }
 
 // Request encodes and executes a command on the HSM and returns the binary response
-func (c *HTTPConnector) Request(command *CommandMessage) ([]byte, error) {
-	requestData, err := command.Serialize()
-	if err != nil {
-		return nil, err
-	}
+func (c *HTTPConnector) Request(command *Command) ([]byte, error) {
+	requestData := command.Serialize()
 
 	res, err := http.DefaultClient.Post("http://"+c.URL+"/connector/api", "application/octet-stream", bytes.NewReader(requestData))
 	if err != nil {

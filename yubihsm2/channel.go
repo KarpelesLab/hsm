@@ -113,15 +113,9 @@ func (s *SecureChannel) Authenticate() error {
 	s.channelLock.Lock()
 	defer s.channelLock.Unlock()
 
-	command, _ := CreateCreateSessionCommand(s.authKeySlot, s.HostChallenge)
-	response, err := s.SendCommand(command)
+	createSessionResp, err := CommandHandler(s.SendCommand).CreateSession(s.authKeySlot, s.HostChallenge)
 	if err != nil {
 		return err
-	}
-
-	createSessionResp, match := response.(*CreateSessionResponse)
-	if !match {
-		return errors.New("invalid response type")
 	}
 
 	s.ID = createSessionResp.SessionID
@@ -150,11 +144,7 @@ func (s *SecureChannel) Authenticate() error {
 	}
 
 	// Authenticate session
-	authenticateCommand, err := CreateAuthenticateSessionCommand(hostCryptogram)
-	if err != nil {
-		return err
-	}
-	_, err = s.sendMACCommand(authenticateCommand)
+	err = CommandHandler(s.sendMACCommand).AuthenticateSession(hostCryptogram)
 	if err != nil {
 		return err
 	}
@@ -168,13 +158,13 @@ func (s *SecureChannel) Authenticate() error {
 }
 
 // SendCommand sends an unauthenticated command to the HSM and returns the parsed response
-func (s *SecureChannel) SendCommand(c *CommandMessage) (Response, error) {
+func (s *SecureChannel) SendCommand(c *Command) (*WireResponse, error) {
 	resp, err := s.connector.Request(c)
 	if err != nil {
 		return nil, err
 	}
 
-	return ParseResponse(resp)
+	return wireResponse(resp, c.CommandType)
 }
 
 // SendEncryptedCommand sends an encrypted & authenticated command to the HSM
@@ -216,26 +206,29 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	encrypter.CryptBlocks(encryptedCommand, commandData)
 
 	// Send the wrapped command in a SessionMessage
-	resp, err := s.sendMACCommand(&CommandMessage{
-		CommandType: CommandTypeSessionMessage,
-		Data:        encryptedCommand,
-	})
+	sessMsg := NewCommand(CommandTypeSessionMessage)
+	sessMsg.Write(encryptedCommand)
+
+	resp, err := s.sendMACCommand(sessMsg)
 	if err != nil {
 		return nil, err
 	}
 
 	// Cast and check the response
-	sessionMessage, match := resp.(*SessionMessageResponse)
-	if !match {
-		return nil, errors.New("invalid response type")
+	payload := resp.Payload
+
+	sessionMessage := &SessionMessageResponse{
+		SessionID:     payload[0],
+		EncryptedData: payload[1 : len(payload)-8],
+		MAC:           payload[len(payload)-8:],
 	}
 
 	// Verify MAC
-	expectedMac, err := s.calculateMAC(&CommandMessage{
-		CommandType: CommandTypeSessionMessage + ResponseCommandOffset,
-		SessionID:   &sessionMessage.SessionID,
-		Data:        sessionMessage.EncryptedData,
-	}, MessageTypeResponse)
+	checkCmd := NewCommand(CommandTypeSessionMessage + ResponseCommandOffset)
+	checkCmd.SessionID = &sessionMessage.SessionID
+	checkCmd.Write(sessionMessage.EncryptedData)
+
+	expectedMac, err := s.calculateMAC(checkCmd, MessageTypeResponse)
 
 	if !bytes.Equal(expectedMac[:MACLength], sessionMessage.MAC) {
 		return nil, errors.New("invalid response MAC")
@@ -252,7 +245,7 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	decrypter.CryptBlocks(decryptedResponse, sessionMessage.EncryptedData)
 
 	// Parse and return the wrapped response
-	return wireResponse(unpad(decryptedResponse), 0)
+	return wireResponse(unpad(decryptedResponse), command.CommandType)
 }
 
 func (s *SecureChannel) Close() error {
@@ -265,7 +258,7 @@ func (s *SecureChannel) Close() error {
 }
 
 // sendMACCommand sends a MAC authenticated command to the HSM and returns a parsed response
-func (s *SecureChannel) sendMACCommand(c *CommandMessage) (Response, error) {
+func (s *SecureChannel) sendMACCommand(c *Command) (*WireResponse, error) {
 
 	// Set command sessionID to this session
 	c.SessionID = &s.ID
@@ -287,7 +280,7 @@ func (s *SecureChannel) sendMACCommand(c *CommandMessage) (Response, error) {
 
 // calculateMAC calculates the authenticated MAC for a command or response.
 // This is stateful since it uses the MACChainValue.
-func (s *SecureChannel) calculateMAC(c *CommandMessage, messageType MessageType) ([]byte, error) {
+func (s *SecureChannel) calculateMAC(c *Command, messageType MessageType) ([]byte, error) {
 
 	// Select the right key
 	var key []byte
@@ -320,13 +313,13 @@ func (s *SecureChannel) calculateMAC(c *CommandMessage, messageType MessageType)
 	binary.Write(buffer, binary.BigEndian, c.CommandType)
 
 	// Write length
-	binary.Write(buffer, binary.BigEndian, uint16(1+len(c.Data)+MACLength))
+	binary.Write(buffer, binary.BigEndian, uint16(1+c.Len()+MACLength))
 
 	// Write sessionID
 	binary.Write(buffer, binary.BigEndian, c.SessionID)
 
 	// Write data
-	buffer.Write(c.Data)
+	buffer.Write(c.Bytes())
 
 	// Write buffer to MAC
 	mac.Write(buffer.Bytes())

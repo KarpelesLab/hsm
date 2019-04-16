@@ -6,16 +6,11 @@ import (
 	"errors"
 )
 
-func CreateCreateSessionCommand(keySetID uint16, hostChallenge []byte) (*CommandMessage, error) {
-	command := &CommandMessage{
-		CommandType: CommandTypeCreateSession,
-	}
+func CreateCreateSessionCommand(keySetID uint16, hostChallenge []byte) (*Command, error) {
+	command := NewCommand(CommandTypeCreateSession)
 
-	payload := bytes.NewBuffer([]byte{})
-	binary.Write(payload, binary.BigEndian, keySetID)
-	payload.Write(hostChallenge)
-
-	command.Data = payload.Bytes()
+	command.WriteValue(keySetID)
+	command.Write(hostChallenge)
 
 	return command, nil
 }
@@ -147,15 +142,6 @@ func CreateDeleteObjectCommand(objID uint16, objType uint8) (*CommandMessage, er
 	binary.Write(payload, binary.BigEndian, objID)
 	binary.Write(payload, binary.BigEndian, objType)
 	command.Data = payload.Bytes()
-
-	return command, nil
-}
-
-func CreateEchoCommand(data []byte) (*CommandMessage, error) {
-	command := &CommandMessage{
-		CommandType: CommandTypeEcho,
-		Data:        data,
-	}
 
 	return command, nil
 }

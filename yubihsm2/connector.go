@@ -3,7 +3,7 @@ package yubihsm2
 // Connector implements a simple request interface with a YubiHSM2
 type Connector interface {
 	// Request executes a command on the HSM and returns the binary response
-	Request(command *CommandMessage) ([]byte, error)
+	Request(command *Command) ([]byte, error)
 	// GetStatus requests the status of the HSM connector (not working for direct USB)
 	GetStatus() (*StatusResponse, error)
 }
