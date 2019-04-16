@@ -230,77 +230,59 @@ func (call CommandHandler) PutAsymmetricKey(keyID uint16, label []byte, domains 
 	return keyID, nil
 }
 
-/*
+func (call CommandHandler) GetPubKey(keyID uint16) (*GetPubKeyResponse, error) {
+	// https://developers.yubico.com/YubiHSM2/Commands/Get_Public_Key.html
+	command := NewCommand(CommandTypeGetPubKey)
+	command.WriteValue(keyID)
 
-func CreateGetPubKeyCommand(keyID uint16) (*CommandMessage, error) {
-	command := &CommandMessage{
-		CommandType: CommandTypeGetPubKey,
+	res, err := call(command)
+	if err != nil {
+		return nil, err
 	}
-
-	payload := bytes.NewBuffer([]byte{})
-	binary.Write(payload, binary.BigEndian, keyID)
-	command.Data = payload.Bytes()
-
-	return command, nil
-}
-func parseGetPubKeyResponse(payload []byte) (Response, error) {
-	if len(payload) < 1 {
+	if res.Len() < 1 {
 		return nil, errors.New("invalid response payload length")
 	}
-	return &GetPubKeyResponse{
-		Algorithm: Algorithm(payload[0]),
-		KeyData:   payload[1:],
-	}, nil
-}
 
-func CreateDeleteObjectCommand(objID uint16, objType uint8) (*CommandMessage, error) {
-	command := &CommandMessage{
-		CommandType: CommandTypeDeleteObject,
+	obj := &GetPubKeyResponse{
+		Algorithm: Algorithm(res.Payload[0]),
+		KeyData:   res.Payload[1:],
 	}
-
-	payload := bytes.NewBuffer([]byte{})
-	binary.Write(payload, binary.BigEndian, objID)
-	binary.Write(payload, binary.BigEndian, objType)
-	command.Data = payload.Bytes()
-
-	return command, nil
+	return obj, nil
 }
 
-func CreateGenerateWrapKeyCommand(objectID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm, delegatedCapabilities uint64) (*CommandMessage, error) {
+func (call CommandHandler) DeleteObject(objID uint16, objType uint8) error {
+	// https://developers.yubico.com/YubiHSM2/Commands/Delete_Object.html
+	command := NewCommand(CommandTypeDeleteObject)
+
+	command.WriteValue(objID)
+	command.WriteValue(objType)
+
+	return call.nullResponse(command)
+}
+
+func (call CommandHandler) GenerateWrapKey(objectID uint16, label []byte, domains uint16, capabilities uint64, algorithm Algorithm, delegatedCapabilities uint64) (uint16, error) {
 	if len(label) > LabelLength {
-		return nil, errors.New("label is too long")
+		return 0, errors.New("label is too long")
 	}
 	if len(label) < LabelLength {
 		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
 	}
-	command := &CommandMessage{
-		CommandType: CommandTypeGenerateWrapKey,
+
+	command := NewCommand(CommandTypeGenerateWrapKey)
+	command.WriteValue(objectID)
+	command.Write(label)
+	command.WriteValue(domains)
+	command.WriteValue(capabilities)
+	command.WriteValue(uint8(algorithm))
+	command.WriteValue(delegatedCapabilities)
+
+	res, err := call(command)
+	if err != nil {
+		return 0, err
 	}
-
-	payload := &bytes.Buffer{}
-	binary.Write(payload, binary.BigEndian, objectID)
-	payload.Write(label)
-	binary.Write(payload, binary.BigEndian, domains)
-	binary.Write(payload, binary.BigEndian, capabilities)
-	binary.Write(payload, binary.BigEndian, algorithm)
-	binary.Write(payload, binary.BigEndian, delegatedCapabilities)
-
-	command.Data = payload.Bytes()
-
-	return command, nil
+	if res.Len() != 2 {
+		return 0, errors.New("invalid response payload length")
+	}
+	res.ReadValue(&objectID)
+	return objectID, nil
 }
-
-func parseSignDataEddsaResponse(payload []byte) (Response, error) {
-	return &SignDataEddsaResponse{
-		Signature: payload,
-	}, nil
-}
-
-func parseSignDataEcdsaResponse(payload []byte) (Response, error) {
-	return &SignDataEcdsaResponse{
-		Signature: payload,
-	}, nil
-}
-
-
-*/
