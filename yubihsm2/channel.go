@@ -15,6 +15,9 @@ import (
 type (
 	// SecureChannel implements a communication channel with a YubiHSM2 as specified in the SCP03 standard
 	SecureChannel struct {
+		CommandHandler
+		Plain CommandHandler
+
 		// connector is used to communicate with the card
 		connector Connector
 		// authKeySlot is the slot of the used authKey on the HSM
@@ -93,6 +96,8 @@ func NewSecureChannel(connector Connector, authKeySlot uint16, password string) 
 		authKeySlot:   authKeySlot,
 		connector:     connector,
 	}
+	channel.CommandHandler = channel.SendEncryptedCommand
+	channel.Plain = channel.SendCommand
 
 	hostChallenge := make([]byte, 8)
 	_, err := rand.Read(hostChallenge)
@@ -113,7 +118,7 @@ func (s *SecureChannel) Authenticate() error {
 	s.channelLock.Lock()
 	defer s.channelLock.Unlock()
 
-	createSessionResp, err := CommandHandler(s.SendCommand).CreateSession(s.authKeySlot, s.HostChallenge)
+	createSessionResp, err := s.Plain.CreateSession(s.authKeySlot, s.HostChallenge)
 	if err != nil {
 		return err
 	}
