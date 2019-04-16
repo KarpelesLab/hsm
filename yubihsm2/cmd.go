@@ -16,8 +16,8 @@ func (call CommandHandler) nullResponse(command *Command) error {
 
 func (call CommandHandler) AuthenticateSession(hostCryptogram []byte) error {
 	// https://developers.yubico.com/YubiHSM2/Commands/Authenticate_Session.html
-	if len(hostCryptogram) != 17 {
-		return os.ErrInvalid
+	if len(hostCryptogram) != 8 {
+		return errors.New("AuthenticateSession: invalid length for hostCryptogram")
 	}
 
 	command := NewCommand(CommandTypeAuthenticateSession)

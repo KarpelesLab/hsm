@@ -55,7 +55,7 @@ func parseResponse(data []byte, expect CommandType) (*WireResponse, error) {
 	}
 
 	transactionType := CommandType(data[0])
-	payloadLength := binary.BigEndian.Uint16(data[1:2])
+	payloadLength := binary.BigEndian.Uint16(data[1:3])
 	payload := data[3:]
 	if len(payload) != int(payloadLength) {
 		return nil, errors.New("response payload length does not equal the given length")
