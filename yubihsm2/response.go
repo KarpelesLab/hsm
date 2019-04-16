@@ -1,15 +1,6 @@
 package yubihsm2
 
-import (
-	"bytes"
-	"encoding/binary"
-	"errors"
-)
-
 type (
-	Response interface {
-	}
-
 	CreateSessionResponse struct {
 		SessionID      uint8
 		CardChallenge  []byte
@@ -22,20 +13,14 @@ type (
 		MAC           []byte
 	}
 
-	CreateAsymmetricKeyResponse struct {
-		KeyID uint16
-	}
-
-	PutAsymmetricKeyResponse struct {
-		KeyID uint16
-	}
-
-	SignDataEddsaResponse struct {
-		Signature []byte
-	}
-
-	SignDataEcdsaResponse struct {
-		Signature []byte
+	DeviceInfoResponse struct {
+		VMajor   uint8
+		VMinor   uint8
+		VBuild   uint8
+		Serial   uint32
+		LogTotal uint8
+		LogUsed  uint8
+		Algos    []Algorithm
 	}
 
 	GetPubKeyResponse struct {
@@ -43,93 +28,9 @@ type (
 		// KeyData can contain different formats depending on the algorithm according to the YubiHSM2 documentation.
 		KeyData []byte
 	}
-
-	EchoResponse struct {
-		Data []byte
-	}
 )
 
-// ParseResponse parses the binary response from the card to the relevant Response type.
-// If the response is an error zu parses the Error type response and returns an error of the
-// type commands.Error with the parsed error message.
-func ParseResponse(data []byte) (Response, error) {
-	if len(data) < 3 {
-		return nil, errors.New("invalid response")
-	}
-
-	transactionType := CommandType(data[0] + ResponseCommandOffset)
-
-	var payloadLength uint16
-	err := binary.Read(bytes.NewReader(data[1:3]), binary.BigEndian, &payloadLength)
-	if err != nil {
-		return nil, err
-	}
-
-	payload := data[3:]
-	if len(payload) != int(payloadLength) {
-		return nil, errors.New("response payload length does not equal the given length")
-	}
-
-	switch transactionType {
-	case CommandTypeCreateSession:
-		return parseCreateSessionResponse(payload)
-	case CommandTypeAuthenticateSession:
-		return nil, nil
-	case CommandTypeSessionMessage:
-		return parseSessionMessage(payload)
-	case CommandTypeGenerateAsymmetricKey:
-		return parseCreateAsymmetricKeyResponse(payload)
-	case CommandTypeSignDataEddsa:
-		return parseSignDataEddsaResponse(payload)
-	case CommandTypeSignDataEcdsa:
-		return parseSignDataEcdsaResponse(payload)
-	case CommandTypePutAsymmetric:
-		return parsePutAsymmetricKeyResponse(payload)
-	case CommandTypeCloseSession:
-		return nil, nil
-	case CommandTypeGetPubKey:
-		return parseGetPubKeyResponse(payload)
-	case CommandTypeDeleteObject:
-		return nil, nil
-	case CommandTypeEcho:
-		return parseEchoResponse(payload)
-	case ErrorResponseCode:
-		return nil, parseErrorResponse(payload)
-	default:
-		return nil, errors.New("response type unknown / not implemented")
-	}
-}
-
-func parseErrorResponse(payload []byte) error {
-	if len(payload) != 1 {
-		return errors.New("invalid response payload length")
-	}
-
-	return &Error{
-		Code: ErrorCode(payload[0]),
-	}
-}
-
-func parseSessionMessage(payload []byte) (Response, error) {
-	return &SessionMessageResponse{
-		SessionID:     payload[0],
-		EncryptedData: payload[1 : len(payload)-8],
-		MAC:           payload[len(payload)-8:],
-	}, nil
-}
-
-func parseCreateSessionResponse(payload []byte) (Response, error) {
-	if len(payload) != 17 {
-		return nil, errors.New("invalid response payload length")
-	}
-
-	return &CreateSessionResponse{
-		SessionID:      uint8(payload[0]),
-		CardChallenge:  payload[1:9],
-		CardCryptogram: payload[9:],
-	}, nil
-}
-
+/*
 func parseCreateAsymmetricKeyResponse(payload []byte) (Response, error) {
 	if len(payload) != 2 {
 		return nil, errors.New("invalid response payload length")
@@ -189,3 +90,4 @@ func parseEchoResponse(payload []byte) (Response, error) {
 		Data: payload,
 	}, nil
 }
+*/

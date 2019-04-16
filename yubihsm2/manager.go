@@ -10,6 +10,7 @@ import (
 // SessionManager manages a pool of authenticated secure sessions with a YubiHSM2
 type SessionManager struct {
 	CommandHandler
+	Plain CommandHandler
 
 	session   *SecureChannel
 	lock      sync.Mutex
@@ -37,6 +38,7 @@ func NewSessionManager(connector Connector, authKeyID uint16, password string) (
 		destroyed: false,
 	}
 	manager.CommandHandler = manager.SendEncryptedCommand
+	manager.Plain = manager.SendCommand
 
 	err := manager.swapSession()
 	if err != nil {
@@ -117,7 +119,7 @@ func (s *SessionManager) SendEncryptedCommand(c *Command) (*WireResponse, error)
 }
 
 // SendCommand sends an unauthenticated command to the HSM and returns the parsed response
-func (s *SessionManager) SendCommand(c *Command) (Response, error) {
+func (s *SessionManager) SendCommand(c *Command) (*WireResponse, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
