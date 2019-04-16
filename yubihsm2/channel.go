@@ -254,7 +254,7 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 }
 
 func (s *SecureChannel) Close() error {
-	_, err := s.SendEncryptedCommand(NewCommand(CommandTypeCloseSession))
+	err := s.CloseSession()
 	if err != nil {
 		return err
 	}

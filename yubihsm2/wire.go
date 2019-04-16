@@ -85,3 +85,7 @@ func (w *WireResponse) Expect(expect CommandType) error {
 	}
 	return nil
 }
+
+func (w *WireResponse) ReadValue(i interface{}) error {
+	return binary.Read(w, binary.BigEndian, i)
+}

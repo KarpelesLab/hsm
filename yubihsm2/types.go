@@ -66,6 +66,7 @@ const (
 	CommandTypeUnwrapData            CommandType = 0x69
 	CommandTypeSignDataEddsa         CommandType = 0x6a
 	CommandTypeSetBlink              CommandType = 0x6b
+	CommandTypeChangeAuthKey         CommandType = 0x6c
 
 	// Errors
 	ErrorCodeOK                ErrorCode = 0x00
