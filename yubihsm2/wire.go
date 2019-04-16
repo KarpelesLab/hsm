@@ -43,24 +43,45 @@ func (c *Command) Serialize() []byte {
 	return buffer.Bytes()
 }
 
-func wireResponse(data []byte) (CommandType, []byte, error) {
+type WireResponse struct {
+	*bytes.Reader
+	CommandType CommandType
+	Payload     []byte
+}
+
+func wireResponse(data []byte, expect CommandType) (*WireResponse, error) {
 	if len(data) < 3 {
-		return ErrorResponseCode, nil, errors.New("invalid response")
+		return nil, errors.New("invalid response")
 	}
 
 	transactionType := CommandType(data[0])
 	payloadLength := binary.BigEndian.Uint16(data[1:2])
 	payload := data[3:]
 	if len(payload) != int(payloadLength) {
-		return ErrorResponseCode, nil, errors.New("response payload length does not equal the given length")
+		return nil, errors.New("response payload length does not equal the given length")
 	}
 
 	if transactionType == ErrorResponseCode {
 		if len(payload) != 1 {
-			return ErrorResponseCode, nil, errors.New("invalid response payload length")
+			return nil, errors.New("invalid response payload length")
 		}
-		return ErrorResponseCode, nil, &Error{Code: ErrorCode(payload[0])}
+		return nil, &Error{Code: ErrorCode(payload[0])}
 	}
 
-	return transactionType & 0x7f, payload, nil
+	transactionType = transactionType & 0x7f
+
+	res := &WireResponse{bytes.NewReader(payload), transactionType, payload}
+
+	if expect != 0 && transactionType != expect {
+		return res, ErrInvalidResponseType
+	}
+
+	return res, nil
+}
+
+func (w *WireResponse) Expect(expect CommandType) error {
+	if w.CommandType != expect {
+		return ErrInvalidResponseType
+	}
+	return nil
 }

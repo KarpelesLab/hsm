@@ -16,23 +16,19 @@ func (s *SessionManager) Echo(payload []byte) ([]byte, error) {
 	command := NewCommand(CommandTypeEcho)
 	command.Write(payload)
 
-	resp, err := s.SendEncryptedCommand(command.Serialize())
+	resp, err := s.SendEncryptedCommand(command)
 	if err != nil {
 		return nil, err
 	}
 
-	t, res, err := wireResponse(resp)
+	err = resp.Expect(CommandTypeEcho)
 	if err != nil {
 		return nil, err
 	}
 
-	if t != CommandTypeEcho {
-		return nil, ErrInvalidResponseType
+	if !bytes.Equal(payload, resp.Payload) {
+		return resp.Payload, errors.New("yubihsm2: response to echo isn't equal to original payload")
 	}
 
-	if !bytes.Equal(payload, res) {
-		return res, errors.New("yubihsm2: response to echo isn't equal to original payload")
-	}
-
-	return res, nil
+	return resp.Payload, nil
 }

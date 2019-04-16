@@ -93,7 +93,7 @@ func (s *SessionManager) checkSessionHealth() {
 
 // SendEncryptedCommand sends an encrypted & authenticated command to the HSM
 // and returns the decrypted and parsed response.
-func (s *SessionManager) SendEncryptedCommand(c []byte) ([]byte, error) {
+func (s *SessionManager) SendEncryptedCommand(c *Command) (*WireResponse, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

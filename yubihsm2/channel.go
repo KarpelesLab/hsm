@@ -179,7 +179,7 @@ func (s *SecureChannel) SendCommand(c *CommandMessage) (Response, error) {
 
 // SendEncryptedCommand sends an encrypted & authenticated command to the HSM
 // and returns the decrypted and parsed response.
-func (s *SecureChannel) SendEncryptedCommand(commandData []byte) ([]byte, error) {
+func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, error) {
 	if s.SecurityLevel != SecurityLevelAuthenticated {
 		return nil, errors.New("the session is not authenticated")
 	}
@@ -211,7 +211,7 @@ func (s *SecureChannel) SendEncryptedCommand(commandData []byte) ([]byte, error)
 	encrypter := cipher.NewCBCEncrypter(block, iv)
 
 	// Serialize and encrypt the wrapped command
-	commandData = pad(commandData)
+	commandData := pad(command.Serialize())
 	encryptedCommand := make([]byte, len(commandData))
 	encrypter.CryptBlocks(encryptedCommand, commandData)
 
@@ -252,17 +252,11 @@ func (s *SecureChannel) SendEncryptedCommand(commandData []byte) ([]byte, error)
 	decrypter.CryptBlocks(decryptedResponse, sessionMessage.EncryptedData)
 
 	// Parse and return the wrapped response
-	return unpad(decryptedResponse), nil
+	return wireResponse(unpad(decryptedResponse), 0)
 }
 
 func (s *SecureChannel) Close() error {
-	command, err := CreateCloseSessionCommand()
-	if err != nil {
-		return err
-	}
-
-	c, _ := command.Serialize()
-	_, err = s.SendEncryptedCommand(c)
+	_, err := s.SendEncryptedCommand(NewCommand(CommandTypeCloseSession))
 	if err != nil {
 		return err
 	}
