@@ -178,6 +178,37 @@ func (call CommandHandler) GenerateAsymmetricKey(keyID uint16, label []byte, dom
 	return keyID, nil
 }
 
+func (call CommandHandler) GetObjectInfo(objectID ObjectID, typ ObjectType) (*ObjectInfoResponse, error) {
+	command, err := CmdGetObjectInfo.Build(objectID, typ)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := call(command)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := new(ObjectInfoResponse)
+
+	res.ReadValue(&obj.Capabilities)
+	res.ReadValue(&obj.ObjectID)
+	res.ReadValue(&obj.ObjectLength)
+	res.ReadValue(&obj.Domains)
+	res.ReadValue(&obj.Type)
+	res.ReadValue(&obj.Algorithm)
+	res.ReadValue(&obj.Sequence)
+	res.ReadValue(&obj.Origin)
+
+	lbl := make([]byte, 40)
+	res.Read(lbl)
+	obj.Label = bytes.TrimRight(lbl, "\x00")
+
+	res.ReadValue(&obj.DelegatedCap)
+
+	return obj, nil
+}
+
 func (call CommandHandler) GetPseudoRandom(l uint16) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Get_Pseudo_Random.html
 	command := CmdGetPseudoRandom.New()

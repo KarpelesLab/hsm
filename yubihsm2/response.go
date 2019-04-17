@@ -34,4 +34,17 @@ type (
 		Type     ObjectType
 		Sequence uint8
 	}
+
+	ObjectInfoResponse struct {
+		Capabilities Capability
+		ObjectID     ObjectID
+		ObjectLength uint16
+		Domains      Domain
+		Type         ObjectType
+		Algorithm    Algorithm
+		Sequence     uint8
+		Origin       uint8
+		Label        []byte
+		DelegatedCap Capability
+	}
 )
