@@ -31,3 +31,8 @@ func NewSoftwareHSM() (*SoftwareHSM, error) {
 func (h *SoftwareHSM) Ready() bool {
 	return h.db != nil
 }
+
+func (h *SoftwareHSM) ListKeys() ([]Key, error) {
+	// TODO
+	return nil, nil
+}
