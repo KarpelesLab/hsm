@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 	"syscall"
 
 	"github.com/MagicalTux/hsm/yubihsm2"
@@ -18,7 +19,10 @@ type YubiHSM2 struct {
 
 type YubiHSM2Key struct {
 	parent *YubiHSM2
-	kid    uint16
+	kid    yubihsm2.ObjectID
+
+	info    *yubihsm2.ObjectInfoResponse
+	getInfo sync.Once
 }
 
 func NewYubiHSM2() (HSM, error) {
@@ -84,5 +88,17 @@ func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 }
 
 func (k *YubiHSM2Key) String() string {
-	return fmt.Sprintf("YubiHSM2 Key(0x%x)", k.kid)
+	k.getInfo.Do(k.doGetInfo)
+	return fmt.Sprintf("YubiHSM2 Key(0x%x Cap=0x%x Algo=%s Label=%s)", k.kid, k.info.Capabilities, k.info.Algorithm.String(), k.info.Label)
+}
+
+func (k *YubiHSM2Key) doGetInfo() {
+	// grab info from yubihsm
+	info, err := k.parent.sm.GetObjectInfo(k.kid, yubihsm2.AsymmetricKey)
+	if err != nil {
+		log.Printf("Get info failed: %s", err)
+		k.info = &yubihsm2.ObjectInfoResponse{}
+	} else {
+		k.info = info
+	}
 }

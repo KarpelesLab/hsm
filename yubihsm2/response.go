@@ -30,7 +30,7 @@ type (
 	}
 
 	ListObjectsResponse struct {
-		ObjectID uint16
+		ObjectID ObjectID
 		Type     ObjectType
 		Sequence uint8
 	}
