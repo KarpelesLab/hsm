@@ -33,15 +33,6 @@ func NewYubiHSM2() (HSM, error) {
 		return nil, err
 	}
 
-	log.Printf("sending echo")
-	echoMessage := []byte("test")
-	res, err := sm.Echo(echoMessage)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("success: %s", res)
-
 	return &YubiHSM2{sm}, nil
 }
 
