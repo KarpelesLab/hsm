@@ -64,6 +64,18 @@ func (h *YubiHSM2) ListKeys() ([]Key, error) {
 	return f, nil
 }
 
+func (h *YubiHSM2) ListKeysByName(name string) ([]Key, error) {
+	res, err := h.sm.ListObjects(yubihsm2.AsymmetricKey, yubihsm2.Label(name))
+	if err != nil {
+		return nil, err
+	}
+	var f []Key
+	for _, i := range res {
+		f = append(f, &YubiHSM2Key{parent: h, kid: i.ObjectID})
+	}
+	return f, nil
+}
+
 func (k *YubiHSM2Key) Public() crypto.PublicKey {
 	return k
 }

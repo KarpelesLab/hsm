@@ -36,3 +36,8 @@ func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 	// TODO
 	return nil, nil
 }
+
+func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
+	// TODO
+	return nil, nil
+}
