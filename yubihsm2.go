@@ -33,6 +33,10 @@ func NewYubiHSM2() (HSM, error) {
 		return nil, err
 	}
 	log.Printf("Connected to YubiHSM manager v%s", status.Version)
+	if status.Status != "OK" {
+		log.Printf("Key status invalid: %s", status.Status)
+		return nil, fmt.Errorf("unable to access key: %s", status.Status)
+	}
 
 	fmt.Print("Enter YubiHSM2 for Key 1 Passphrase: ")
 	pwd, err := terminal.ReadPassword(int(syscall.Stdin))
