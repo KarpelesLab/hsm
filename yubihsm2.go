@@ -92,19 +92,20 @@ func (k *YubiHSM2Key) Public() crypto.PublicKey {
 }
 
 func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
-	// generate hash
-	var hash []byte
+	k.getInfo.Do(k.doGetInfo)
 
-	switch opts.HashFunc() {
-	case crypto.SHA1:
-	case crypto.SHA256:
-	case crypto.SHA384:
-	case crypto.SHA512:
+	switch k.info.Algorithm {
+	case yubihsm2.Ed25519:
+		if opts.HashFunc() != crypto.Hash(0) {
+			return nil, errors.New("ed25519: cannot sign hashed message")
+		}
+
+		if len(digest) > 2000 { // give or take
+			return nil, errors.New("ed25519: message too large")
+		}
+
+		return k.parent.sm.SignDataEddsa(k.kid, digest)
 	}
-
-	h := opts.HashFunc().New()
-	h.Write(hash)
-	hash = h.Sum(nil)
 
 	// Depend on type of key!
 	return nil, errors.New("todo")

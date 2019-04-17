@@ -331,7 +331,7 @@ func (call CommandHandler) ResetDevice() error {
 	return call.nullResponse(CmdReset.New(), nil)
 }
 
-func (call CommandHandler) SignDataEddsa(keyID uint16, data []byte) ([]byte, error) {
+func (call CommandHandler) SignDataEddsa(keyID ObjectID, data []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Sign_Eddsa.html
 	command := CmdSignDataEddsa.New()
 	command.WriteValue(keyID)
@@ -345,7 +345,7 @@ func (call CommandHandler) SignDataEddsa(keyID uint16, data []byte) ([]byte, err
 	return res.Payload, nil
 }
 
-func (call CommandHandler) SignDataEcdsa(keyID uint16, data []byte) ([]byte, error) {
+func (call CommandHandler) SignDataEcdsa(keyID ObjectID, data []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Sign_Ecdsa.html
 	command := CmdSignDataEcdsa.New()
 	command.WriteValue(keyID)
