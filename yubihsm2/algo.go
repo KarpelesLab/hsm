@@ -5,53 +5,55 @@ type Algorithm uint8
 // Algorithms
 // See: https://developers.yubico.com/YubiHSM2/Concepts/Algorithms.html
 
+//go:generate stringer -type=Algorithm -output algo_s.go
+
 const (
-	_                                  = iota // ignore zero
-	AlgorithmRsaPkcs1Sha1    Algorithm = iota // 1
-	AlgorithmRsaPkcs1Sha256                   // 2
-	AlgorithmRsaPkcs1Sha384                   // 3
-	AlgorithmRsaPkcs1Sha512                   // 4
-	AlgorithmRsaPssSha1                       // 5
-	AlgorithmRsaPssSha256                     // 6
-	AlgorithmRsaPssSha384                     // 7
-	AlgorithmRsaPssSha512                     // 8
-	AlgorithmRsa2048                          // 9
-	AlgorithmRsa3072                          // 10
-	AlgorithmRsa4096                          // 11
-	AlgorithmSecp256r1                        // 12
-	AlgorithmSecp384r1                        // 13
-	AlgorithmSecp521r1                        // 14
-	AlgorithmSecp256k1                        // 15
-	AlgorithmBrainpool256r1                   // 16
-	AlgorithmBrainpool384r1                   // 17
-	AlgorithmBrainpool512r1                   // 18
-	AlgorithmHmacSha1                         // 19
-	AlgorithmHmacSha256                       // 20
-	AlgorithmHmacSha384                       // 21
-	AlgorithmHmacSha512                       // 22
-	AlgorithmEcdsaSha1                        // 23
-	AlgorithmEcdh                             // 24
-	AlgorithmRsaOaepSha1                      // 25
-	AlgorithmRsaOaepSha256                    // 26
-	AlgorithmRsaOaepSha384                    // 27
-	AlgorithmRsaOaepSha512                    // 28
-	AlgorithmAes128CcmWrap                    // 29
-	AlgorithmOpaqueData                       // 30
-	AlgorithmOpaqueX509Cert                   // 31
-	AlgorithmMgf1Sha1                         // 32
-	AlgorithmMgf1Sha256                       // 33
-	AlgorithmMgf1Sha384                       // 34
-	AlgorithmMgf1Sha512                       // 35
-	AlgorithmSshTemplate                      // 36
-	AlgorithmYubicoOtpAes128                  // 37
-	AlgorithmYubicoAesAuth                    // 38
-	AlgorithmYubicoOtpAes192                  // 39
-	AlgorithmYubicoOtpAes256                  // 40
-	AlgorithmAes192CcmWrap                    // 41
-	AlgorithmAes256CcmWrap                    // 42
-	AlgorithmEcdsaSha256                      // 43
-	AlgorithmEcdsaSha384                      // 44
-	AlgorithmEcdsaSha512                      // 45
-	AlgorighmED25519                          // 46
-	AlgorithmSecp224r1                        // 47
+	_                          = iota // ignore zero
+	RsaPkcs1Sha1     Algorithm = iota // 1
+	RsaPkcs1Sha256                    // 2
+	RsaPkcs1Sha384                    // 3
+	RsaPkcs1Sha512                    // 4
+	RsaPssSha1                        // 5
+	RsaPssSha256                      // 6
+	RsaPssSha384                      // 7
+	RsaPssSha512                      // 8
+	Rsa2048                           // 9
+	Rsa3072                           // 10
+	Rsa4096                           // 11
+	Secp256r1                         // 12
+	Secp384r1                         // 13
+	Secp521r1                         // 14
+	Secp256k1                         // 15
+	Brainpool256r1                    // 16
+	Brainpool384r1                    // 17
+	Brainpool512r1                    // 18
+	HmacSha1                          // 19
+	HmacSha256                        // 20
+	HmacSha384                        // 21
+	HmacSha512                        // 22
+	EcdsaSha1                         // 23
+	Ecdh                              // 24
+	RsaOaepSha1                       // 25
+	RsaOaepSha256                     // 26
+	RsaOaepSha384                     // 27
+	RsaOaepSha512                     // 28
+	Aes128CcmWrap                     // 29
+	OpaqueData                        // 30
+	OpaqueX509Cert                    // 31
+	Mgf1Sha1                          // 32
+	Mgf1Sha256                        // 33
+	Mgf1Sha384                        // 34
+	Mgf1Sha512                        // 35
+	SshTemplate                       // 36
+	YubicoOtpAes128                   // 37
+	YubicoAesAuth                     // 38
+	YubicoOtpAes192                   // 39
+	YubicoOtpAes256                   // 40
+	Aes192CcmWrap                     // 41
+	Aes256CcmWrap                     // 42
+	EcdsaSha256                       // 43
+	EcdsaSha384                       // 44
+	EcdsaSha512                       // 45
+	AlgorighmED25519                  // 46
+	Secp224r1                         // 47
 )
