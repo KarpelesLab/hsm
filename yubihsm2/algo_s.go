@@ -53,13 +53,13 @@ func _() {
 	_ = x[EcdsaSha256-43]
 	_ = x[EcdsaSha384-44]
 	_ = x[EcdsaSha512-45]
-	_ = x[AlgorighmED25519-46]
+	_ = x[Ed25519-46]
 	_ = x[Secp224r1-47]
 }
 
-const _Algorithm_name = "RsaPkcs1Sha1RsaPkcs1Sha256RsaPkcs1Sha384RsaPkcs1Sha512RsaPssSha1RsaPssSha256RsaPssSha384RsaPssSha512Rsa2048Rsa3072Rsa4096Secp256r1Secp384r1Secp521r1Secp256k1Brainpool256r1Brainpool384r1Brainpool512r1HmacSha1HmacSha256HmacSha384HmacSha512EcdsaSha1EcdhRsaOaepSha1RsaOaepSha256RsaOaepSha384RsaOaepSha512Aes128CcmWrapOpaqueDataOpaqueX509CertMgf1Sha1Mgf1Sha256Mgf1Sha384Mgf1Sha512SshTemplateYubicoOtpAes128YubicoAesAuthYubicoOtpAes192YubicoOtpAes256Aes192CcmWrapAes256CcmWrapEcdsaSha256EcdsaSha384EcdsaSha512AlgorighmED25519Secp224r1"
+const _Algorithm_name = "RsaPkcs1Sha1RsaPkcs1Sha256RsaPkcs1Sha384RsaPkcs1Sha512RsaPssSha1RsaPssSha256RsaPssSha384RsaPssSha512Rsa2048Rsa3072Rsa4096Secp256r1Secp384r1Secp521r1Secp256k1Brainpool256r1Brainpool384r1Brainpool512r1HmacSha1HmacSha256HmacSha384HmacSha512EcdsaSha1EcdhRsaOaepSha1RsaOaepSha256RsaOaepSha384RsaOaepSha512Aes128CcmWrapOpaqueDataOpaqueX509CertMgf1Sha1Mgf1Sha256Mgf1Sha384Mgf1Sha512SshTemplateYubicoOtpAes128YubicoAesAuthYubicoOtpAes192YubicoOtpAes256Aes192CcmWrapAes256CcmWrapEcdsaSha256EcdsaSha384EcdsaSha512Ed25519Secp224r1"
 
-var _Algorithm_index = [...]uint16{0, 12, 26, 40, 54, 64, 76, 88, 100, 107, 114, 121, 130, 139, 148, 157, 171, 185, 199, 207, 217, 227, 237, 246, 250, 261, 274, 287, 300, 313, 323, 337, 345, 355, 365, 375, 386, 401, 414, 429, 444, 457, 470, 481, 492, 503, 519, 528}
+var _Algorithm_index = [...]uint16{0, 12, 26, 40, 54, 64, 76, 88, 100, 107, 114, 121, 130, 139, 148, 157, 171, 185, 199, 207, 217, 227, 237, 246, 250, 261, 274, 287, 300, 313, 323, 337, 345, 355, 365, 375, 386, 401, 414, 429, 444, 457, 470, 481, 492, 503, 510, 519}
 
 func (i Algorithm) String() string {
 	i -= 1

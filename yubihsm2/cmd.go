@@ -222,7 +222,7 @@ func (call CommandHandler) GetPseudoRandom(l uint16) ([]byte, error) {
 	return res.Payload, nil
 }
 
-func (call CommandHandler) GetPubKey(keyID uint16) (*GetPubKeyResponse, error) {
+func (call CommandHandler) GetPubKey(keyID ObjectID) (*GetPubKeyResponse, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Get_Public_Key.html
 	command := CmdGetPubKey.New()
 	command.WriteValue(keyID)

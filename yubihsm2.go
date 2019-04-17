@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/MagicalTux/hsm/yubihsm2"
+	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -77,7 +78,17 @@ func (h *YubiHSM2) ListKeysByName(name string) ([]Key, error) {
 }
 
 func (k *YubiHSM2Key) Public() crypto.PublicKey {
-	return k
+	key, err := k.parent.sm.GetPubKey(k.kid)
+	if err != nil {
+		return nil
+	}
+
+	switch key.Algorithm {
+	case yubihsm2.Ed25519:
+		return ed25519.PublicKey(key.KeyData)
+	default:
+		return key.KeyData
+	}
 }
 
 func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
@@ -113,4 +124,14 @@ func (k *YubiHSM2Key) doGetInfo() {
 	} else {
 		k.info = info
 	}
+}
+
+func (k *YubiHSM2Key) PublicBlob() ([]byte, error) {
+	key, err := k.parent.sm.GetPubKey(k.kid)
+	if err != nil {
+		return nil, err
+	}
+
+	// we have key.Algorithm too
+	return key.KeyData, nil
 }

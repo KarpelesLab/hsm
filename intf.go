@@ -10,5 +10,6 @@ type HSM interface {
 
 type Key interface {
 	crypto.Signer
+	PublicBlob() ([]byte, error)
 	String() string
 }
