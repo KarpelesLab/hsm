@@ -97,21 +97,21 @@ func (k *YubiHSM2Key) Public() crypto.PublicKey {
 	case yubihsm2.Secp256r1:
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P256(),
-			X:     big.NewInt(0).SetBytes(key.KeyData[:32]),
-			Y:     big.NewInt(0).SetBytes(key.KeyData[32:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:32]),
+			Y:     new(big.Int).SetBytes(key.KeyData[32:]),
 		}
 	case yubihsm2.Secp384r1:
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P384(),
-			X:     big.NewInt(0).SetBytes(key.KeyData[:48]),
-			Y:     big.NewInt(0).SetBytes(key.KeyData[48:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:48]),
+			Y:     new(big.Int).SetBytes(key.KeyData[48:]),
 		}
 	case yubihsm2.Secp521r1:
 		// key size, 64 or 66?
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P521(),
-			X:     big.NewInt(0).SetBytes(key.KeyData[:66]),
-			Y:     big.NewInt(0).SetBytes(key.KeyData[66:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:66]),
+			Y:     new(big.Int).SetBytes(key.KeyData[66:]),
 		}
 	case yubihsm2.Rsa2048, yubihsm2.Rsa3072, yubihsm2.Rsa4096:
 		return &rsa.PublicKey{
