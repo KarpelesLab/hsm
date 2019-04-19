@@ -2,10 +2,14 @@ package hsm
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"sync"
 	"syscall"
 
@@ -90,6 +94,30 @@ func (k *YubiHSM2Key) Public() crypto.PublicKey {
 	switch key.Algorithm {
 	case yubihsm2.Ed25519:
 		return ed25519.PublicKey(key.KeyData)
+	case yubihsm2.Secp256r1:
+		return &ecdsa.PublicKey{
+			Curve: elliptic.P256(),
+			X:     big.NewInt(0).SetBytes(key.KeyData[:32]),
+			Y:     big.NewInt(0).SetBytes(key.KeyData[32:]),
+		}
+	case yubihsm2.Secp384r1:
+		return &ecdsa.PublicKey{
+			Curve: elliptic.P384(),
+			X:     big.NewInt(0).SetBytes(key.KeyData[:48]),
+			Y:     big.NewInt(0).SetBytes(key.KeyData[48:]),
+		}
+	case yubihsm2.Secp521r1:
+		// key size, 64 or 66?
+		return &ecdsa.PublicKey{
+			Curve: elliptic.P521(),
+			X:     big.NewInt(0).SetBytes(key.KeyData[:66]),
+			Y:     big.NewInt(0).SetBytes(key.KeyData[66:]),
+		}
+	case yubihsm2.Rsa2048, yubihsm2.Rsa3072, yubihsm2.Rsa4096:
+		return &rsa.PublicKey{
+			N: big.NewInt(0).SetBytes(key.KeyData),
+			E: 65537, // YubiHSM2 has a fixed value for RSA e
+		}
 	default:
 		return key.KeyData
 	}
