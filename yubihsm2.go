@@ -172,6 +172,8 @@ func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 		}
 
 		return k.parent.sm.SignDataEddsa(k.kid, digest)
+	case yubihsm2.Secp256r1:
+		return k.parent.sm.SignDataEcdsa(k.kid, digest)
 	}
 
 	// Depend on type of key!
