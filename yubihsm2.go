@@ -172,8 +172,27 @@ func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 		}
 
 		return k.parent.sm.SignDataEddsa(k.kid, digest)
-	case yubihsm2.Secp256r1:
+	case yubihsm2.Secp256r1, yubihsm2.Secp384r1, yubihsm2.Secp521r1:
 		return k.parent.sm.SignDataEcdsa(k.kid, digest)
+	case yubihsm2.Rsa2048, yubihsm2.Rsa3072, yubihsm2.Rsa4096:
+		if pssO, ok := opts.(*rsa.PSSOptions); ok {
+			// this uses PSS. Algo needs to match the current algo
+			var algo yubihsm2.Algorithm
+			switch pssO.Hash {
+			case crypto.SHA1:
+				algo = yubihsm2.RsaPssSha1
+			case crypto.SHA256:
+				algo = yubihsm2.RsaPssSha256
+			case crypto.SHA384:
+				algo = yubihsm2.RsaPssSha384
+			case crypto.SHA512:
+				algo = yubihsm2.RsaPssSha512
+			default:
+				return nil, errors.New("unsupported hashing algorithm")
+			}
+			return k.parent.sm.SignDataPss(k.kid, algo, uint16(pssO.SaltLength), digest)
+		}
+		return k.parent.sm.SignDataPkcs1(k.kid, digest)
 	}
 
 	// Depend on type of key!

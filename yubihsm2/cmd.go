@@ -331,6 +331,34 @@ func (call CommandHandler) ResetDevice() error {
 	return call.nullResponse(CmdReset.New(), nil)
 }
 
+func (call CommandHandler) SignDataPkcs1(keyID ObjectID, data []byte) ([]byte, error) {
+	command := CmdSignDataPkcs1.New()
+	command.WriteValue(keyID)
+	command.Write(data)
+
+	res, err := call(command)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Payload, nil
+}
+
+func (call CommandHandler) SignDataPss(keyID ObjectID, algorithm Algorithm, saltLen uint16, data []byte) ([]byte, error) {
+	command := CmdSignDataPss.New()
+	command.WriteValue(keyID)
+	command.WriteValue(algorithm)
+	command.WriteValue(saltLen)
+	command.Write(data)
+
+	res, err := call(command)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Payload, nil
+}
+
 func (call CommandHandler) SignDataEddsa(keyID ObjectID, data []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Sign_Eddsa.html
 	command := CmdSignDataEddsa.New()
