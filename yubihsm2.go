@@ -88,7 +88,7 @@ func (h *YubiHSM2) ListKeysByName(name string) ([]Key, error) {
 }
 
 func (h *YubiHSM2) PutCertificate(name string, cert *x509.Certificate) error {
-	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.Label(name))
+	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.OpaqueX509Cert, yubihsm2.Label(name))
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (h *YubiHSM2) PutCertificate(name string, cert *x509.Certificate) error {
 }
 
 func (h *YubiHSM2) GetCertificate(name string) (*x509.Certificate, error) {
-	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.Label(name))
+	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.OpaqueX509Cert, yubihsm2.Label(name))
 	if err != nil {
 		return nil, err
 	}
