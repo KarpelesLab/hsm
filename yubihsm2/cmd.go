@@ -389,3 +389,42 @@ func (call CommandHandler) PutAsymmetricKey(keyID uint16, label []byte, domains 
 	res.ReadValue(&keyID)
 	return keyID, nil
 }
+
+func (call CommandHandler) PutOpaque(id ObjectID, label []byte, domains uint16, capabilities uint64, algorithm Algorithm, data []byte) (ObjectID, error) {
+	if len(label) > LabelLength {
+		return 0, errors.New("label is too long")
+	}
+	if len(label) < LabelLength {
+		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
+	}
+
+	command := CmdPutOpaque.New()
+	command.WriteValue(id)
+	command.Write(label)
+	command.WriteValue(domains)
+	command.WriteValue(capabilities)
+	command.WriteValue(algorithm)
+	command.Write(data)
+
+	res, err := call(command)
+	if err != nil {
+		return 0, err
+	}
+	if res.Len() != 2 {
+		return 0, errors.New("invalid response payload length")
+	}
+	res.ReadValue(&id)
+	return id, nil
+}
+
+func (call CommandHandler) GetOpaque(id ObjectID) ([]byte, error) {
+	command := CmdGetOpaque.New()
+	command.WriteValue(id)
+
+	res, err := call(command)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Payload, nil
+}

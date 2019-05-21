@@ -1,6 +1,7 @@
 package hsm
 
 import (
+	"crypto/x509"
 	"log"
 	"os"
 	"path/filepath"
@@ -40,4 +41,12 @@ func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 	// TODO
 	return nil, nil
+}
+
+func (h *SoftwareHSM) PutCertificate(name string, cert *x509.Certificate) error {
+	return nil // TODO
+}
+
+func (h *SoftwareHSM) GetCertificate(name string) (*x509.Certificate, error) {
+	return nil, nil // TODO
 }

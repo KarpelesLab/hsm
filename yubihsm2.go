@@ -5,11 +5,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math/big"
+	"os"
 	"sync"
 	"syscall"
 
@@ -83,6 +85,39 @@ func (h *YubiHSM2) ListKeysByName(name string) ([]Key, error) {
 		f = append(f, &YubiHSM2Key{parent: h, kid: i.ObjectID})
 	}
 	return f, nil
+}
+
+func (h *YubiHSM2) PutCertificate(name string, cert *x509.Certificate) error {
+	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.Label(name))
+	if err != nil {
+		return err
+	}
+	var id yubihsm2.ObjectID
+
+	if len(res) > 0 {
+		id = res[0].ObjectID
+	}
+
+	// send certificate
+	_, err = h.sm.PutOpaque(id, []byte(name), 1, 0, yubihsm2.OpaqueX509Cert, cert.Raw)
+	return err
+}
+
+func (h *YubiHSM2) GetCertificate(name string) (*x509.Certificate, error) {
+	res, err := h.sm.ListObjects(yubihsm2.TypeOpaque, yubihsm2.Label(name))
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, os.ErrNotExist
+	}
+
+	// grab data
+	der, err := h.sm.GetOpaque(res[0].ObjectID)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(der)
 }
 
 func (k *YubiHSM2Key) Public() crypto.PublicKey {
