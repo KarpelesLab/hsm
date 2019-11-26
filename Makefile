@@ -1,6 +1,9 @@
 #!/bin/make
-GOPATH:=$(shell go env GOPATH)
+GOROOT:=$(shell PATH="/pkg/main/dev-lang.go/bin:$$PATH" go env GOROOT)
+GOPATH:=$(shell $(GOROOT)/bin/go env GOPATH)
+
+export GO111MODULE=on
 
 all:
 	$(GOPATH)/bin/goimports -w -l .
-	go build -v
+	$(GOROOT)/bin/go build -v

@@ -3,6 +3,7 @@ package hsm
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,7 +17,6 @@ import (
 	"syscall"
 
 	"github.com/MagicalTux/hsm/yubihsm2"
-	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

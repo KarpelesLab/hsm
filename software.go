@@ -1,12 +1,18 @@
 package hsm
 
 import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
-	bolt "go.etcd.io/bbolt"
+	"github.com/boltdb/bolt"
 )
 
 type SoftwareHSM struct {
@@ -29,13 +35,53 @@ func NewSoftwareHSM() (*SoftwareHSM, error) {
 	return r, nil
 }
 
+type softwareKey struct {
+	k []byte
+	crypto.Signer
+}
+
+func (k *softwareKey) PublicBlob() ([]byte, error) {
+	// grab public key & marshal
+	return x509.MarshalPKIXPublicKey(k.Public())
+}
+
+func (k *softwareKey) String() string {
+	return fmt.Sprintf("%T(%s)", k.Signer, k)
+}
+
 func (h *SoftwareHSM) Ready() bool {
 	return h.db != nil
 }
 
 func (h *SoftwareHSM) ListKeys() ([]Key, error) {
-	// TODO
-	return nil, nil
+	var list []Key
+	// for all keys in db
+	err := h.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("key"))
+		if b == nil {
+			return nil // empty list
+		}
+
+		// for each
+		return b.ForEach(func(k, v []byte) error {
+			// we don't care about k
+			keyI, err := x509.ParsePKCS8PrivateKey(v)
+			if err != nil {
+				return err
+			}
+
+			switch key := keyI.(type) {
+			case *rsa.PrivateKey:
+				list = append(list, &softwareKey{k, key})
+			case *ecdsa.PrivateKey:
+				list = append(list, &softwareKey{k, key})
+			case ed25519.PrivateKey:
+				list = append(list, &softwareKey{k, key})
+			}
+			return nil
+		})
+	})
+	return list, err
 }
 
 func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
@@ -44,9 +90,41 @@ func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 }
 
 func (h *SoftwareHSM) PutCertificate(name string, cert *x509.Certificate) error {
-	return nil // TODO
+	if cert.Raw == nil {
+		return errors.New("certificate is not valid (missing Raw data)")
+	}
+
+	return h.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte("crt"))
+		if err != nil {
+			return err
+		}
+
+		return b.Put([]byte(name), cert.Raw)
+	})
 }
 
 func (h *SoftwareHSM) GetCertificate(name string) (*x509.Certificate, error) {
-	return nil, nil // TODO
+	var crt *x509.Certificate
+	err := h.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("crt"))
+		if b == nil {
+			return os.ErrNotExist
+		}
+
+		// get
+		v := b.Get([]byte(name))
+		if v == nil {
+			return os.ErrNotExist
+		}
+
+		// parse
+		c, err := x509.ParseCertificate(v)
+		if err != nil {
+			return err
+		}
+		crt = c
+		return nil
+	})
+	return crt, err
 }
