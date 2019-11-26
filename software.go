@@ -22,7 +22,12 @@ type SoftwareHSM struct {
 func NewSoftwareHSM() (*SoftwareHSM, error) {
 	log.Printf("WARNING: You are running the HSM package in UNENCRYPTED software mode. DO NOT USE IN PRODUCTION")
 
-	p := filepath.Join(globalSettingFolder, "hsm")
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = "."
+	}
+
+	p := filepath.Join(configDir, "hsm")
 	os.MkdirAll(p, 0755)
 
 	db, err := bolt.Open(filepath.Join(p, "hsmdata.db"), 0600, nil)
