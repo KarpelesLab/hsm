@@ -3,8 +3,8 @@ package hsm
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/ed25519"
-	"crypto/rsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -70,23 +70,74 @@ func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 				return err
 			}
 
-			switch key := keyI.(type) {
-			case *rsa.PrivateKey:
+			if key, ok := keyI.(crypto.Signer); ok {
 				list = append(list, &softwareKey{k, key})
-			case *ecdsa.PrivateKey:
-				list = append(list, &softwareKey{k, key})
-			case ed25519.PrivateKey:
-				list = append(list, &softwareKey{k, key})
+				return nil
+			} else {
+				return fmt.Errorf("unable to handle key of type %T", keyI)
 			}
-			return nil
 		})
 	})
 	return list, err
 }
 
 func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
-	// TODO
-	return nil, nil
+	var list []Key
+
+	err := h.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("key"))
+		if b == nil {
+			return nil // empty list
+		}
+
+		// we only allow one key of a given name
+		v := b.Get([]byte(name))
+
+		if v != nil {
+			keyI, err := x509.ParsePKCS8PrivateKey(v)
+			if err != nil {
+				return err
+			}
+
+			if key, ok := keyI.(crypto.Signer); ok {
+				list = append(list, &softwareKey{[]byte(name), key})
+				return nil
+			} else {
+				return fmt.Errorf("unable to handle key of type %T", keyI)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(list) == 0 {
+		// need to generate a key, because that's how we roll in test mode. ListKeysByName() will always return something
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+
+		keyB, err := x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			return nil, err
+		}
+
+		// store key
+		err = h.db.Update(func(tx *bolt.Tx) error {
+			b, err := tx.CreateBucketIfNotExists([]byte("key"))
+			if err != nil {
+				return err
+			}
+			return b.Put([]byte(name), keyB)
+		})
+
+		list = append(list, &softwareKey{[]byte(name), key})
+	}
+
+	return list, nil
 }
 
 func (h *SoftwareHSM) PutCertificate(name string, cert *x509.Certificate) error {
