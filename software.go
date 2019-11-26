@@ -46,7 +46,7 @@ func (k *softwareKey) PublicBlob() ([]byte, error) {
 }
 
 func (k *softwareKey) String() string {
-	return fmt.Sprintf("%T(%s)", k.Signer, k)
+	return fmt.Sprintf("%T(%s)", k.Signer, k.k)
 }
 
 func (h *SoftwareHSM) Ready() bool {
