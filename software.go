@@ -114,6 +114,7 @@ func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 	}
 
 	if len(list) == 0 {
+		log.Printf("[HSM:software] Generating new private key %s", name)
 		// need to generate a key, because that's how we roll in test mode. ListKeysByName() will always return something
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
