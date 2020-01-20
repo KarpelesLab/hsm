@@ -1,4 +1,4 @@
-module github.com/MagicalTux/hsm
+module github.com/KarpelesLab/hsm
 
 go 1.13
 
