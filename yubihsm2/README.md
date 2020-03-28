@@ -1,6 +1,6 @@
 # YubiHSM2
 
-[GoDoc](https://godoc.org/github.com/MagicalTux/hsm/yubihsm2)
+[GoDoc](https://godoc.org/github.com/KarpelesLab/hsm/yubihsm2)
 
 Code comes initally from: https://github.com/certusone/yubihsm-go (Apache 2.0 license)
 

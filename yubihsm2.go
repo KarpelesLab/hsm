@@ -16,7 +16,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/MagicalTux/hsm/yubihsm2"
+	"github.com/KarpelesLab/hsm/yubihsm2"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
