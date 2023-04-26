@@ -44,19 +44,28 @@ func NewYubiHSM2() (HSM, error) {
 		return nil, fmt.Errorf("unable to access key: %s", status.Status)
 	}
 
-	fmt.Print("Enter YubiHSM2 for Key 1 Passphrase: ")
-	pwd, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("\n")
+	attempt := 1
+	for {
+		fmt.Print("Enter passphrase for YubiHSM2 Key 1: ")
+		pwd, err := terminal.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			// failed to read from terminal → fail now
+			return nil, err
+		}
+		fmt.Printf("\n")
 
-	sm, err := yubihsm2.NewSessionManager(c, 1, string(pwd))
-	if err != nil {
-		return nil, err
-	}
+		sm, err := yubihsm2.NewSessionManager(c, 1, string(pwd))
+		if err != nil {
+			fmt.Printf("Failed to unlock YubiHSM2: %s", err)
+			attempt += 1
+			if attempt <= 3 {
+				continue
+			}
+			return nil, err
+		}
 
-	return &YubiHSM2{sm}, nil
+		return &YubiHSM2{sm}, nil
+	}
 }
 
 func (h *YubiHSM2) Ready() bool {
