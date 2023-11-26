@@ -56,7 +56,7 @@ func NewYubiHSM2() (HSM, error) {
 
 		sm, err := yubihsm2.NewSessionManager(c, 1, string(pwd))
 		if err != nil {
-			fmt.Printf("Failed to unlock YubiHSM2: %s", err)
+			fmt.Printf("Failed to unlock YubiHSM2: %s\n", err)
 			attempt += 1
 			if attempt <= 3 {
 				continue
