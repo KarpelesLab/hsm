@@ -240,6 +240,9 @@ func (s *SecureChannel) SendEncryptedCommand(command *Command) (*WireResponse, e
 	checkCmd.Write(sessionMessage.EncryptedData)
 
 	expectedMac, err := s.calculateMAC(checkCmd, MessageTypeResponse)
+	if err != nil {
+		return nil, err
+	}
 
 	if !bytes.Equal(expectedMac[:MACLength], sessionMessage.MAC) {
 		return nil, errors.New("invalid response MAC")

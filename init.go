@@ -14,5 +14,5 @@ func New() (HSM, error) {
 		return NewYubiHSM2()
 	}
 
-	return nil, errors.New("No HSM enabled, please run with HSM env variable")
+	return nil, errors.New("no HSM enabled, please run with HSM env variable")
 }

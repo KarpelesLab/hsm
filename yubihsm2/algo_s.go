@@ -62,9 +62,9 @@ const _Algorithm_name = "RsaPkcs1Sha1RsaPkcs1Sha256RsaPkcs1Sha384RsaPkcs1Sha512R
 var _Algorithm_index = [...]uint16{0, 12, 26, 40, 54, 64, 76, 88, 100, 107, 114, 121, 130, 139, 148, 157, 171, 185, 199, 207, 217, 227, 237, 246, 250, 261, 274, 287, 300, 313, 323, 337, 345, 355, 365, 375, 386, 401, 414, 429, 444, 457, 470, 481, 492, 503, 510, 519}
 
 func (i Algorithm) String() string {
-	i -= 1
-	if i >= Algorithm(len(_Algorithm_index)-1) {
-		return "Algorithm(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	idx := int(i) - 1
+	if i < 1 || idx >= len(_Algorithm_index)-1 {
+		return "Algorithm(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _Algorithm_name[_Algorithm_index[i]:_Algorithm_index[i+1]]
+	return _Algorithm_name[_Algorithm_index[idx]:_Algorithm_index[idx+1]]
 }

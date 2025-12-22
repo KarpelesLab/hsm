@@ -146,7 +146,7 @@ var (
 
 func (i ErrorCode) String() string {
 	switch {
-	case 0 <= i && i <= 12:
+	case i <= 12:
 		return _ErrorCode_name_0[_ErrorCode_index_0[i]:_ErrorCode_index_0[i+1]]
 	case i == 255:
 		return _ErrorCode_name_1
@@ -259,11 +259,11 @@ const _ObjectType_name = "TypeOpaqueAuthenticationKeyAsymmetricKeyWrapKeyHmacKey
 var _ObjectType_index = [...]uint8{0, 10, 27, 40, 47, 54, 62, 72}
 
 func (i ObjectType) String() string {
-	i -= 1
-	if i >= ObjectType(len(_ObjectType_index)-1) {
-		return "ObjectType(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	idx := int(i) - 1
+	if i < 1 || idx >= len(_ObjectType_index)-1 {
+		return "ObjectType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _ObjectType_name[_ObjectType_index[i]:_ObjectType_index[i+1]]
+	return _ObjectType_name[_ObjectType_index[idx]:_ObjectType_index[idx+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.

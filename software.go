@@ -142,13 +142,15 @@ func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 		}
 
 		// store key
-		err = h.db.Update(func(tx *bolt.Tx) error {
+		if err = h.db.Update(func(tx *bolt.Tx) error {
 			b, err := tx.CreateBucketIfNotExists([]byte("key"))
 			if err != nil {
 				return err
 			}
 			return b.Put([]byte(name), keyB)
-		})
+		}); err != nil {
+			return nil, err
+		}
 
 		list = append(list, &softwareKey{[]byte(name), key})
 	}

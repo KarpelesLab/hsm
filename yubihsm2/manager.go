@@ -18,11 +18,10 @@ type SessionManager struct {
 	authKeyID uint16
 	authKey   AuthKey // Store derived key instead of password
 
-	creationWait sync.WaitGroup
-	destroyed    bool
-	keepAlive    *time.Timer
-	swapping     bool
-	swapLock     sync.Mutex // Protects swapping flag
+	destroyed bool
+	keepAlive *time.Timer
+	swapping  bool
+	swapLock  sync.Mutex // Protects swapping flag
 }
 
 var echoPayload = []byte("keepalive")
