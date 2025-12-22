@@ -88,9 +88,15 @@ const (
 // NewSecureChannel initiates a new secure channel to communicate with an HSM using the given authKey
 // Call Authenticate next to establish a session.
 func NewSecureChannel(connector Connector, authKeySlot uint16, password string) (*SecureChannel, error) {
+	return NewSecureChannelWithKey(connector, authKeySlot, deriveAuthKeyFromPwd(password))
+}
+
+// NewSecureChannelWithKey initiates a new secure channel using a pre-derived auth key.
+// Call Authenticate next to establish a session.
+func NewSecureChannelWithKey(connector Connector, authKeySlot uint16, authKey AuthKey) (*SecureChannel, error) {
 	channel := &SecureChannel{
 		ID:            0,
-		AuthKey:       deriveAuthKeyFromPwd(password),
+		AuthKey:       authKey,
 		MACChainValue: make([]byte, 16),
 		SecurityLevel: SecurityLevelUnauthenticated,
 		authKeySlot:   authKeySlot,

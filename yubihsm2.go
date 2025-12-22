@@ -14,10 +14,9 @@ import (
 	"math/big"
 	"os"
 	"sync"
-	"syscall"
 
 	"github.com/KarpelesLab/hsm/yubihsm2"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type YubiHSM2 struct {
@@ -32,8 +31,16 @@ type YubiHSM2Key struct {
 	getInfo sync.Once
 }
 
+// Default YubiHSM2 connector address
+const defaultYubiHSM2Address = "localhost:12345"
+
 func NewYubiHSM2() (HSM, error) {
-	c := yubihsm2.NewHTTPConnector("localhost:12345")
+	addr := os.Getenv("YUBIHSM2_ADDR")
+	if addr == "" {
+		addr = defaultYubiHSM2Address
+	}
+
+	c := yubihsm2.NewHTTPConnector(addr)
 	status, err := c.GetStatus()
 	if err != nil {
 		return nil, err
@@ -47,7 +54,7 @@ func NewYubiHSM2() (HSM, error) {
 	attempt := 1
 	for {
 		fmt.Print("Enter passphrase for YubiHSM2 Key 1: ")
-		pwd, err := terminal.ReadPassword(int(syscall.Stdin))
+		pwd, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			// failed to read from terminal → fail now
 			return nil, err
@@ -65,6 +72,13 @@ func NewYubiHSM2() (HSM, error) {
 		}
 
 		return &YubiHSM2{sm}, nil
+	}
+}
+
+// Close destroys the session manager and releases resources
+func (h *YubiHSM2) Close() {
+	if h.sm != nil {
+		h.sm.Destroy()
 	}
 }
 
@@ -129,6 +143,14 @@ func (h *YubiHSM2) GetCertificate(name string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(der)
 }
 
+// ECDSA key sizes in bytes for each curve
+const (
+	ecdsaP256KeySize = 32
+	ecdsaP384KeySize = 48
+	ecdsaP521KeySize = 66
+	ed25519KeySize   = 32
+)
+
 func (k *YubiHSM2Key) Public() crypto.PublicKey {
 	key, err := k.parent.sm.GetPubKey(k.kid)
 	if err != nil {
@@ -137,25 +159,36 @@ func (k *YubiHSM2Key) Public() crypto.PublicKey {
 
 	switch key.Algorithm {
 	case yubihsm2.Ed25519:
+		if len(key.KeyData) < ed25519KeySize {
+			return nil
+		}
 		return ed25519.PublicKey(key.KeyData)
 	case yubihsm2.Secp256r1:
+		if len(key.KeyData) < ecdsaP256KeySize*2 {
+			return nil
+		}
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P256(),
-			X:     new(big.Int).SetBytes(key.KeyData[:32]),
-			Y:     new(big.Int).SetBytes(key.KeyData[32:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:ecdsaP256KeySize]),
+			Y:     new(big.Int).SetBytes(key.KeyData[ecdsaP256KeySize : ecdsaP256KeySize*2]),
 		}
 	case yubihsm2.Secp384r1:
+		if len(key.KeyData) < ecdsaP384KeySize*2 {
+			return nil
+		}
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P384(),
-			X:     new(big.Int).SetBytes(key.KeyData[:48]),
-			Y:     new(big.Int).SetBytes(key.KeyData[48:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:ecdsaP384KeySize]),
+			Y:     new(big.Int).SetBytes(key.KeyData[ecdsaP384KeySize : ecdsaP384KeySize*2]),
 		}
 	case yubihsm2.Secp521r1:
-		// key size, 64 or 66?
+		if len(key.KeyData) < ecdsaP521KeySize*2 {
+			return nil
+		}
 		return &ecdsa.PublicKey{
 			Curve: elliptic.P521(),
-			X:     new(big.Int).SetBytes(key.KeyData[:66]),
-			Y:     new(big.Int).SetBytes(key.KeyData[66:]),
+			X:     new(big.Int).SetBytes(key.KeyData[:ecdsaP521KeySize]),
+			Y:     new(big.Int).SetBytes(key.KeyData[ecdsaP521KeySize : ecdsaP521KeySize*2]),
 		}
 	case yubihsm2.Rsa2048, yubihsm2.Rsa3072, yubihsm2.Rsa4096:
 		return &rsa.PublicKey{
@@ -167,7 +200,12 @@ func (k *YubiHSM2Key) Public() crypto.PublicKey {
 	}
 }
 
-func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+// MaxEdDSAMessageSize is the approximate maximum message size for EdDSA signing
+const MaxEdDSAMessageSize = 2000
+
+// Sign signs digest with the private key held in the HSM.
+// The rand parameter is unused as the HSM provides its own randomness.
+func (k *YubiHSM2Key) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
 	k.getInfo.Do(k.doGetInfo)
 
 	switch k.info.Algorithm {
@@ -176,7 +214,7 @@ func (k *YubiHSM2Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 			return nil, errors.New("ed25519: cannot sign hashed message")
 		}
 
-		if len(digest) > 2000 { // give or take
+		if len(digest) > MaxEdDSAMessageSize {
 			return nil, errors.New("ed25519: message too large")
 		}
 

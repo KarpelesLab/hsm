@@ -28,7 +28,9 @@ func NewSoftwareHSM() (*SoftwareHSM, error) {
 	}
 
 	p := filepath.Join(configDir, "hsm")
-	os.MkdirAll(p, 0755)
+	if err := os.MkdirAll(p, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create config directory: %w", err)
+	}
 
 	db, err := bolt.Open(filepath.Join(p, "hsmdata.db"), 0600, nil)
 	if err != nil {
@@ -38,6 +40,14 @@ func NewSoftwareHSM() (*SoftwareHSM, error) {
 	r := &SoftwareHSM{db: db}
 
 	return r, nil
+}
+
+// Close closes the underlying database connection
+func (h *SoftwareHSM) Close() error {
+	if h.db != nil {
+		return h.db.Close()
+	}
+	return nil
 }
 
 type softwareKey struct {

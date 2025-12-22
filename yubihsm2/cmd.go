@@ -39,12 +39,12 @@ func (call CommandHandler) ChangeAuthKey(objectId uint16, algo Algorithm, encKey
 
 	command, err := CmdChangeAuthKey.Build(objectId, algo, encKey, macKey)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	res, err := call(command)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	if res.Len() != 2 {
 		return 0, errors.New("ChangeAuthKey: expected exactly 2 bytes payload")
@@ -127,9 +127,12 @@ func (call CommandHandler) DeviceInfo() (*DeviceInfoResponse, error) {
 	return res, nil
 }
 
+// MaxEchoPayloadSize is the maximum payload size for Echo command
+const MaxEchoPayloadSize = 2021
+
 func (call CommandHandler) Echo(payload []byte) ([]byte, error) {
 	// https://developers.yubico.com/YubiHSM2/Commands/Echo.html
-	if len(payload) < 1 || len(payload) > 2021 {
+	if len(payload) < 1 || len(payload) > MaxEchoPayloadSize {
 		return nil, os.ErrInvalid
 	}
 
@@ -298,6 +301,9 @@ func (call CommandHandler) ListObjects(filters ...interface{}) ([]*ListObjectsRe
 	}
 
 	res, err := call(command)
+	if err != nil {
+		return nil, err
+	}
 
 	var ret []*ListObjectsResponse
 

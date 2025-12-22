@@ -16,12 +16,13 @@ type SessionManager struct {
 	lock      sync.Mutex
 	connector Connector
 	authKeyID uint16
-	password  string
+	authKey   AuthKey // Store derived key instead of password
 
 	creationWait sync.WaitGroup
 	destroyed    bool
 	keepAlive    *time.Timer
 	swapping     bool
+	swapLock     sync.Mutex // Protects swapping flag
 }
 
 var echoPayload = []byte("keepalive")
@@ -34,7 +35,7 @@ func NewSessionManager(connector Connector, authKeyID uint16, password string) (
 	manager := &SessionManager{
 		connector: connector,
 		authKeyID: authKeyID,
-		password:  password,
+		authKey:   deriveAuthKeyFromPwd(password), // Derive and store key, not password
 		destroyed: false,
 	}
 	manager.CommandHandler = manager.SendEncryptedCommand
@@ -64,10 +65,16 @@ func (s *SessionManager) pingRoutine() {
 
 func (s *SessionManager) swapSession() error {
 	// Lock swapping process
+	s.swapLock.Lock()
 	s.swapping = true
-	defer func() { s.swapping = false }()
+	s.swapLock.Unlock()
+	defer func() {
+		s.swapLock.Lock()
+		s.swapping = false
+		s.swapLock.Unlock()
+	}()
 
-	newSession, err := NewSecureChannel(s.connector, s.authKeyID, s.password)
+	newSession, err := NewSecureChannelWithKey(s.connector, s.authKeyID, s.authKey)
 	if err != nil {
 		return err
 	}
@@ -91,7 +98,11 @@ func (s *SessionManager) swapSession() error {
 }
 
 func (s *SessionManager) checkSessionHealth() {
-	if s.session.Counter >= MaxMessagesPerSession*0.9 && !s.swapping {
+	s.swapLock.Lock()
+	isSwapping := s.swapping
+	s.swapLock.Unlock()
+
+	if s.session.Counter >= MaxMessagesPerSession*0.9 && !isSwapping {
 		go s.swapSession()
 	}
 }
@@ -140,6 +151,8 @@ func (s *SessionManager) Destroy() {
 	defer s.lock.Unlock()
 
 	s.keepAlive.Stop()
-	s.session.Close()
+	if s.session != nil {
+		s.session.Close()
+	}
 	s.destroyed = true
 }

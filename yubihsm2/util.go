@@ -20,7 +20,12 @@ func pad(src []byte) []byte {
 
 // unpad removes the padding from src using the mechanism specified in SCP03 and returns the result
 func unpad(src []byte) []byte {
-	if src[len(src)-1] != 0x00 && src[len(src)-1] != 0x80 {
+	if len(src) == 0 {
+		return src
+	}
+
+	lastByte := src[len(src)-1]
+	if lastByte != 0x00 && lastByte != 0x80 {
 		return src
 	}
 
@@ -34,6 +39,13 @@ func unpad(src []byte) []byte {
 			padLen++
 			break
 		}
+		// Found a non-padding byte before 0x80 marker - invalid padding, return as-is
+		return src
+	}
+
+	// If we scanned the entire slice without finding 0x80, return original
+	if padLen == len(src) && src[0] != 0x80 {
+		return src
 	}
 
 	return src[:len(src)-padLen]

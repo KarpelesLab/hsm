@@ -25,7 +25,7 @@ func (k AuthKey) GetEncKey() []byte {
 	return k[:KeyLength]
 }
 
-// GetEncKey returns the MACKey part of the AuthKey
+// GetMacKey returns the MACKey part of the AuthKey
 func (k AuthKey) GetMacKey() []byte {
 	return k[KeyLength:]
 }
