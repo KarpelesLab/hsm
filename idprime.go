@@ -237,9 +237,13 @@ func (h *IDPrime) Ready() bool { return len(h.keys) > 0 }
 
 // RandomSource returns an io.Reader backed by the card's hardware RNG.
 // Each Read opens a single card session and issues as many GET CHALLENGE
-// commands as needed to fill the supplied buffer (256 bytes per APDU).
-// No PIN is required — GET CHALLENGE is unauthenticated on IDPrime.
-func (h *IDPrime) RandomSource() io.Reader { return &idprimeRand{parent: h} }
+// commands as needed to fill the supplied buffer (32 bytes per APDU on
+// the eToken 5110+ FIPS). No PIN is required — GET CHALLENGE is
+// unauthenticated on IDPrime. The Read panics on any card error or
+// short read (see HSM.RandomSource).
+func (h *IDPrime) RandomSource() io.Reader {
+	return mustFillReader{src: &idprimeRand{parent: h}}
+}
 
 type idprimeRand struct {
 	parent *IDPrime

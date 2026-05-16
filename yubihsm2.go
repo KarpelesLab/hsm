@@ -89,8 +89,11 @@ func (h *YubiHSM2) Ready() bool {
 // RandomSource returns an io.Reader that draws bytes from the
 // YubiHSM2's hardware RNG via GetPseudoRandom. Each Read may issue
 // multiple commands (capped at 2048 bytes per call, well within the
-// 2KB message size the device accepts).
-func (h *YubiHSM2) RandomSource() io.Reader { return &yubihsm2Rand{parent: h} }
+// 2KB message size the device accepts). The Read panics on any device
+// error or short read (see HSM.RandomSource).
+func (h *YubiHSM2) RandomSource() io.Reader {
+	return mustFillReader{src: &yubihsm2Rand{parent: h}}
+}
 
 type yubihsm2Rand struct {
 	parent *YubiHSM2

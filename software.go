@@ -94,8 +94,9 @@ func (h *SoftwareHSM) Ready() bool {
 	return h.db != nil
 }
 
-// RandomSource returns crypto/rand.Reader.
-func (h *SoftwareHSM) RandomSource() io.Reader { return rand.Reader }
+// RandomSource returns a Reader backed by crypto/rand.Reader that
+// panics if it cannot fill the buffer in full (see HSM.RandomSource).
+func (h *SoftwareHSM) RandomSource() io.Reader { return mustFillReader{src: rand.Reader} }
 
 func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 	var list []Key
