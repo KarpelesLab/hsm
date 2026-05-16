@@ -17,5 +17,8 @@ type HSM interface {
 type Key interface {
 	crypto.Signer
 	PublicBlob() ([]byte, error)
+	// Certificate returns the X.509 certificate associated with this key,
+	// or nil if no certificate is associated or available.
+	Certificate() *x509.Certificate
 	String() string
 }

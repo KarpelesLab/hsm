@@ -263,11 +263,23 @@ func (k *YubiHSM2Key) doGetInfo() {
 }
 
 func (k *YubiHSM2Key) PublicBlob() ([]byte, error) {
-	key, err := k.parent.sm.GetPubKey(k.kid)
-	if err != nil {
-		return nil, err
+	pub := k.Public()
+	if pub == nil {
+		return nil, errors.New("yubihsm2: unable to retrieve public key")
 	}
+	return x509.MarshalPKIXPublicKey(pub)
+}
 
-	// we have key.Algorithm too
-	return key.KeyData, nil
+// Certificate returns the X.509 certificate stored on the HSM under the
+// same label as this key, or nil if none is present.
+func (k *YubiHSM2Key) Certificate() *x509.Certificate {
+	k.getInfo.Do(k.doGetInfo)
+	if len(k.info.Label) == 0 {
+		return nil
+	}
+	cert, err := k.parent.GetCertificate(string(k.info.Label))
+	if err != nil {
+		return nil
+	}
+	return cert
 }

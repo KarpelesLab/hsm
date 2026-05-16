@@ -281,7 +281,11 @@ func (k *idprimeKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts)
 	return s.Sign(rand, digest, opts)
 }
 
-func (k *idprimeKey) PublicBlob() ([]byte, error) { return k.cert.Raw, nil }
+func (k *idprimeKey) PublicBlob() ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(k.pub)
+}
+
+func (k *idprimeKey) Certificate() *x509.Certificate { return k.cert }
 
 func (k *idprimeKey) String() string {
 	return fmt.Sprintf("IDPrime Key(cn=%q sn=%s keyRef=0x%02X algoRef=0x%02X notAfter=%s)",

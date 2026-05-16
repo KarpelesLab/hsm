@@ -51,13 +51,27 @@ func (h *SoftwareHSM) Close() error {
 }
 
 type softwareKey struct {
-	k []byte
+	parent *SoftwareHSM
+	k      []byte
 	crypto.Signer
 }
 
 func (k *softwareKey) PublicBlob() ([]byte, error) {
 	// grab public key & marshal
 	return x509.MarshalPKIXPublicKey(k.Public())
+}
+
+// Certificate returns the certificate stored under the same name as this
+// key, or nil if none has been stored.
+func (k *softwareKey) Certificate() *x509.Certificate {
+	if k.parent == nil {
+		return nil
+	}
+	cert, err := k.parent.GetCertificate(string(k.k))
+	if err != nil {
+		return nil
+	}
+	return cert
 }
 
 func (k *softwareKey) String() string {
@@ -86,7 +100,7 @@ func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 			}
 
 			if key, ok := keyI.(crypto.Signer); ok {
-				list = append(list, &softwareKey{k, key})
+				list = append(list, &softwareKey{parent: h, k: k, Signer: key})
 				return nil
 			} else {
 				return fmt.Errorf("unable to handle key of type %T", keyI)
@@ -115,7 +129,7 @@ func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 			}
 
 			if key, ok := keyI.(crypto.Signer); ok {
-				list = append(list, &softwareKey{[]byte(name), key})
+				list = append(list, &softwareKey{parent: h, k: []byte(name), Signer: key})
 				return nil
 			} else {
 				return fmt.Errorf("unable to handle key of type %T", keyI)
@@ -152,7 +166,7 @@ func (h *SoftwareHSM) ListKeysByName(name string) ([]Key, error) {
 			return nil, err
 		}
 
-		list = append(list, &softwareKey{[]byte(name), key})
+		list = append(list, &softwareKey{parent: h, k: []byte(name), Signer: key})
 	}
 
 	return list, nil
