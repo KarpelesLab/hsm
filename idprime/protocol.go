@@ -2,6 +2,7 @@ package idprime
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 )
 
@@ -13,9 +14,17 @@ var DefaultAID, _ = hex.DecodeString("A000000018800000000662")
 // SafeNet SAC 10.9 driving an eToken 5110+ FIPS. Other IDPrime variants
 // may need different values; pass overrides via the Signer config.
 const (
-	DefaultPINRefP2  byte = 0x11 // VERIFY PIN P2 (user PIN reference)
-	DefaultKeyRef    byte = 0x12 // on-card key reference for the EC key
-	DefaultAlgoRef   byte = 0x54 // ECDSA-with-hash algorithm reference
+	DefaultPINRefP2 byte = 0x11 // VERIFY PIN P2 (user PIN reference)
+	DefaultKeyRef   byte = 0x12 // on-card key reference for the EC key
+	DefaultAlgoRef  byte = 0x54 // ECDSA-with-hash algorithm reference
+
+	// DefaultRSAAlgoRef is the algorithm reference passed to MSE SET DST
+	// for RSA keys. 0x02 selects "raw RSA, no padding by card" on
+	// IDPrime; the host is responsible for supplying a fully PKCS#1
+	// v1.5-padded block of length == modulus size. Override via
+	// Config.AlgoRef / IDPRIME_ALGO_REF if your card uses a different
+	// scheme.
+	DefaultRSAAlgoRef byte = 0x02
 
 	insVerifyPIN = 0x21 // proprietary INS (NOT standard 0x20)
 	insMSE       = 0x22
@@ -98,6 +107,49 @@ func (card *Card) PSOSign(digest []byte) ([]byte, error) {
 		return nil, fmt.Errorf("PSO COMPUTE: SW=%04X", sw)
 	}
 	return data, nil
+}
+
+// PSOSignRSA sends a fully PKCS#1 v1.5-padded block to the applet and
+// asks it to compute an RSA signature. Combined with algoRef 0x02
+// ("raw RSA, no padding by card"), the card performs only the modular
+// exponentiation; the returned value is the raw signature (length ==
+// modulus byte length).
+//
+// The padded block can exceed PC/SC's MAX_BUFFER_SIZE (264) for larger
+// moduli, so input is split into ISO 7816 command-chained chunks
+// (CLA bit 0x10 set on all but the last APDU).
+func (card *Card) PSOSignRSA(padded []byte) ([]byte, error) {
+	const chunk = 255 // max Lc in short-form APDU
+	for off := 0; off < len(padded); {
+		end := off + chunk
+		last := false
+		if end >= len(padded) {
+			end = len(padded)
+			last = true
+		}
+		cla := byte(0x10) // chained: more commands follow
+		var le int = -1
+		if last {
+			cla = 0x00
+			le = 0
+		}
+		cmd := buildAPDU(cla, insPSO, 0x9E, 0x9A, padded[off:end], le)
+		data, sw, err := card.TransmitChained(cmd)
+		if err != nil {
+			return nil, err
+		}
+		if last {
+			if sw != 0x9000 {
+				return nil, fmt.Errorf("PSO COMPUTE (RSA): SW=%04X", sw)
+			}
+			return data, nil
+		}
+		if sw != 0x9000 {
+			return nil, fmt.Errorf("PSO COMPUTE (RSA) chunk @%d: SW=%04X", off, sw)
+		}
+		off = end
+	}
+	return nil, errors.New("idprime: PSOSignRSA: empty input")
 }
 
 // Logout deauthenticates the current PIN session. Best-effort.

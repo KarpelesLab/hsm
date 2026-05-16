@@ -179,9 +179,14 @@ func (card *Card) EnumerateCerts() ([]CertInfo, error) {
 		if err != nil {
 			continue // no on-card private key matches this cert; skip
 		}
-		algoRef, err := card.GetKeyAlgoRef(keyRef)
-		if err != nil {
-			algoRef = DefaultAlgoRef
+		// Pick AlgoRef from the cert's public-key type. The card also
+		// exposes a value via GET DATA B6 DF3B (see GetKeyAlgoRef), but
+		// that value (e.g. 0x55 on the SafeNet 5110+ FIPS) is not what
+		// MSE SET DST expects and causes SW=6985 when used to sign.
+		// Callers can override via Config.AlgoRef / IDPRIME_ALGO_REF.
+		algoRef := DefaultAlgoRef
+		if _, isRSA := cert.PublicKey.(*rsa.PublicKey); isRSA {
+			algoRef = DefaultRSAAlgoRef
 		}
 		out = append(out, CertInfo{
 			Cert:      cert,

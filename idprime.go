@@ -3,6 +3,7 @@ package hsm
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -35,7 +36,10 @@ import (
 //	                   is exposed as a Key.
 //	IDPRIME_KEY_REF    optional override (only honored with IDPRIME_CERT;
 //	                   hex byte). Default: discovered from the card.
-//	IDPRIME_ALGO_REF   optional override, hex byte. Default 54 (ECDSA).
+//	IDPRIME_ALGO_REF   optional override, hex byte. Default: 0x54
+//	                   (ECDSA) / 0x02 (RSA).
+//	IDPRIME_ALLOW_EXPIRED  if "1", include expired certificates during
+//	                   enumeration (intended for testing only).
 type IDPrime struct {
 	reader        string
 	pin           string
@@ -89,14 +93,15 @@ func NewIDPrime() (HSM, error) {
 
 // loadExplicitKey builds a key from IDPRIME_CERT / IDPRIME_KEY_REF /
 // IDPRIME_ALGO_REF. The key reference is read from the card via
-// findKeyRefForCert if not overridden.
+// findKeyRefForCert if not overridden. The certificate may carry either
+// an ECDSA or RSA public key.
 func (h *IDPrime) loadExplicitKey(certPath string) (*idprimeKey, error) {
-	cert, pub, err := loadEcdsaLeaf(certPath)
+	cert, pub, err := loadSupportedLeaf(certPath)
 	if err != nil {
 		return nil, err
 	}
 	keyRef := byte(0)
-	algoRef := idprime.DefaultAlgoRef
+	algoRef := byte(0)
 	if v := os.Getenv("IDPRIME_KEY_REF"); v != "" {
 		b, err := hex.DecodeString(v)
 		if err != nil || len(b) != 1 {
@@ -118,13 +123,21 @@ func (h *IDPrime) loadExplicitKey(certPath string) (*idprimeKey, error) {
 		}
 		keyRef = discovered
 	}
+	if algoRef == 0 {
+		if _, isRSA := pub.(*rsa.PublicKey); isRSA {
+			algoRef = idprime.DefaultRSAAlgoRef
+		} else {
+			algoRef = idprime.DefaultAlgoRef
+		}
+	}
 	return &idprimeKey{parent: h, cert: cert, pub: pub, keyRef: keyRef, algoRef: algoRef}, nil
 }
 
-// autoEnumerate walks the card and returns one idprimeKey per ECDSA
-// leaf cert with a matching on-card private key and a current validity
-// window. As a side effect, it caches the card's msroots chain bundle
-// on h.intermediates so CertificateChain calls don't reopen the card.
+// autoEnumerate walks the card and returns one idprimeKey per leaf
+// cert (ECDSA or RSA) with a matching on-card private key and a current
+// validity window. As a side effect, it caches the card's msroots chain
+// bundle on h.intermediates so CertificateChain calls don't reopen the
+// card.
 func (h *IDPrime) autoEnumerate() ([]*idprimeKey, error) {
 	var out []*idprimeKey
 	err := h.withCard(func(card *idprime.Card) error {
@@ -137,16 +150,19 @@ func (h *IDPrime) autoEnumerate() ([]*idprimeKey, error) {
 			h.intermediates = ints
 		}
 		now := time.Now()
+		allowExpired := os.Getenv("IDPRIME_ALLOW_EXPIRED") == "1"
 		for _, ci := range certs {
-			if now.Before(ci.Cert.NotBefore) || now.After(ci.Cert.NotAfter) {
+			if !allowExpired && (now.Before(ci.Cert.NotBefore) || now.After(ci.Cert.NotAfter)) {
 				continue
 			}
-			pub, ok := ci.Cert.PublicKey.(*ecdsa.PublicKey)
-			if !ok {
-				continue // Signer is ECDSA-only for now
+			switch ci.Cert.PublicKey.(type) {
+			case *ecdsa.PublicKey, *rsa.PublicKey:
+				// supported
+			default:
+				continue
 			}
 			out = append(out, &idprimeKey{
-				parent: h, cert: ci.Cert, pub: pub,
+				parent: h, cert: ci.Cert, pub: ci.Cert.PublicKey,
 				keyRef: ci.KeyRef, algoRef: ci.AlgoRef,
 			})
 		}
@@ -254,11 +270,12 @@ func (h *IDPrime) GetCertificate(name string) (*x509.Certificate, error) {
 
 // idprimeKey is one Key entry — a single (cert, on-card key reference)
 // pair. The underlying idprime.Signer is built lazily so we don't open
-// the card until somebody actually signs.
+// the card until somebody actually signs. pub is the cert's public key
+// and may be either *ecdsa.PublicKey or *rsa.PublicKey.
 type idprimeKey struct {
 	parent  *IDPrime
 	cert    *x509.Certificate
-	pub     *ecdsa.PublicKey
+	pub     crypto.PublicKey
 	keyRef  byte
 	algoRef byte
 
@@ -318,7 +335,7 @@ func (k *idprimeKey) String() string {
 		k.cert.NotAfter.Format("2006-01-02"))
 }
 
-func loadEcdsaLeaf(path string) (*x509.Certificate, *ecdsa.PublicKey, error) {
+func loadSupportedLeaf(path string) (*x509.Certificate, crypto.PublicKey, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, err
@@ -331,9 +348,10 @@ func loadEcdsaLeaf(path string) (*x509.Certificate, *ecdsa.PublicKey, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: parse cert: %w", path, err)
 	}
-	pub, ok := cert.PublicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, nil, fmt.Errorf("%s: not an ECDSA cert (got %T)", path, cert.PublicKey)
+	switch cert.PublicKey.(type) {
+	case *ecdsa.PublicKey, *rsa.PublicKey:
+		return cert, cert.PublicKey, nil
+	default:
+		return nil, nil, fmt.Errorf("%s: unsupported cert public key type %T", path, cert.PublicKey)
 	}
-	return cert, pub, nil
 }
