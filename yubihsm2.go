@@ -86,6 +86,41 @@ func (h *YubiHSM2) Ready() bool {
 	return h.sm != nil
 }
 
+// RandomSource returns an io.Reader that draws bytes from the
+// YubiHSM2's hardware RNG via GetPseudoRandom. Each Read may issue
+// multiple commands (capped at 2048 bytes per call, well within the
+// 2KB message size the device accepts).
+func (h *YubiHSM2) RandomSource() io.Reader { return &yubihsm2Rand{parent: h} }
+
+type yubihsm2Rand struct {
+	parent *YubiHSM2
+}
+
+const yubihsm2RandChunk = 2048
+
+func (r *yubihsm2Rand) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	var n int
+	for n < len(p) {
+		want := len(p) - n
+		if want > yubihsm2RandChunk {
+			want = yubihsm2RandChunk
+		}
+		chunk, err := r.parent.sm.GetPseudoRandom(uint16(want))
+		if err != nil {
+			return n, err
+		}
+		if len(chunk) == 0 {
+			return n, io.ErrUnexpectedEOF
+		}
+		copy(p[n:], chunk)
+		n += len(chunk)
+	}
+	return n, nil
+}
+
 func (h *YubiHSM2) ListKeys() ([]Key, error) {
 	res, err := h.sm.ListObjects(yubihsm2.AsymmetricKey)
 	if err != nil {

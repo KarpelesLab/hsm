@@ -3,6 +3,7 @@ package hsm
 import (
 	"crypto"
 	"crypto/x509"
+	"io"
 )
 
 type HSM interface {
@@ -12,6 +13,13 @@ type HSM interface {
 
 	PutCertificate(name string, cert *x509.Certificate) error
 	GetCertificate(name string) (*x509.Certificate, error)
+
+	// RandomSource returns an io.Reader that yields cryptographically
+	// random bytes sourced from the HSM's RNG. Software backends return
+	// crypto/rand.Reader. Hardware backends return a Reader that talks
+	// to the device; each Read may transparently issue multiple
+	// underlying commands to fill the requested buffer.
+	RandomSource() io.Reader
 }
 
 type Key interface {

@@ -108,6 +108,32 @@ func (card *Card) PSOSign(digest []byte) ([]byte, error) {
 	return data, nil
 }
 
+// GetChallenge issues the standard ISO 7816-4 GET CHALLENGE APDU
+// (00 84 00 00 Le) and returns n cryptographically random bytes from
+// the card's hardware RNG. n must be 1..256; pass 256 by sending Le=00.
+// Callers needing more than 256 bytes should call this in a loop.
+func (card *Card) GetChallenge(n int) ([]byte, error) {
+	if n < 1 || n > 256 {
+		return nil, fmt.Errorf("idprime: GetChallenge n=%d out of range (1..256)", n)
+	}
+	le := byte(n)
+	if n == 256 {
+		le = 0 // short Le=00 means "up to 256"
+	}
+	cmd := []byte{0x00, 0x84, 0x00, 0x00, le}
+	data, sw, err := card.TransmitChained(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if sw != 0x9000 {
+		return nil, fmt.Errorf("GET CHALLENGE: SW=%04X", sw)
+	}
+	if len(data) != n {
+		return nil, fmt.Errorf("idprime: GET CHALLENGE returned %d bytes (want %d)", len(data), n)
+	}
+	return data, nil
+}
+
 // Logout deauthenticates the current PIN session. Best-effort.
 func (card *Card) Logout() {
 	_, _ = card.Transmit([]byte{0x00, 0x82, 0xFF, 0x00})

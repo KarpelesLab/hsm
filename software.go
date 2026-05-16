@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -92,6 +93,9 @@ func (k *softwareKey) String() string {
 func (h *SoftwareHSM) Ready() bool {
 	return h.db != nil
 }
+
+// RandomSource returns crypto/rand.Reader.
+func (h *SoftwareHSM) RandomSource() io.Reader { return rand.Reader }
 
 func (h *SoftwareHSM) ListKeys() ([]Key, error) {
 	var list []Key

@@ -235,6 +235,53 @@ func (h *IDPrime) withCard(fn func(*idprime.Card) error) error {
 
 func (h *IDPrime) Ready() bool { return len(h.keys) > 0 }
 
+// RandomSource returns an io.Reader backed by the card's hardware RNG.
+// Each Read opens a single card session and issues as many GET CHALLENGE
+// commands as needed to fill the supplied buffer (256 bytes per APDU).
+// No PIN is required — GET CHALLENGE is unauthenticated on IDPrime.
+func (h *IDPrime) RandomSource() io.Reader { return &idprimeRand{parent: h} }
+
+type idprimeRand struct {
+	parent *IDPrime
+}
+
+func (r *idprimeRand) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	aid := r.parent.aid
+	if aid == nil {
+		aid = idprime.DefaultAID
+	}
+	var n int
+	err := r.parent.withCard(func(card *idprime.Card) error {
+		// IDPrime requires the crypto applet to be selected before
+		// GET CHALLENGE will succeed.
+		if err := card.SelectApplet(aid); err != nil {
+			return err
+		}
+		// IDPrime accepts GET CHALLENGE Le ∈ {8, 16, 32}; larger or
+		// off-size Le values return SW=6700 on the cards we've tested.
+		// Always pull 32 at a time; trim the tail when the buffer
+		// doesn't need a full 32.
+		const chunk = 32
+		for n < len(p) {
+			got, err := card.GetChallenge(chunk)
+			if err != nil {
+				return err
+			}
+			take := len(got)
+			if rem := len(p) - n; take > rem {
+				take = rem
+			}
+			copy(p[n:], got[:take])
+			n += take
+		}
+		return nil
+	})
+	return n, err
+}
+
 func (h *IDPrime) ListKeys() ([]Key, error) {
 	out := make([]Key, 0, len(h.keys))
 	for _, k := range h.keys {
