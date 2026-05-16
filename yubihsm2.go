@@ -283,3 +283,14 @@ func (k *YubiHSM2Key) Certificate() *x509.Certificate {
 	}
 	return cert
 }
+
+// CertificateChain returns a single-element slice containing the leaf
+// certificate, or nil if no leaf is present. The YubiHSM2 backend does
+// not track intermediates separately.
+func (k *YubiHSM2Key) CertificateChain() []*x509.Certificate {
+	cert := k.Certificate()
+	if cert == nil {
+		return nil
+	}
+	return []*x509.Certificate{cert}
+}

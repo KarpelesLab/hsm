@@ -74,6 +74,17 @@ func (k *softwareKey) Certificate() *x509.Certificate {
 	return cert
 }
 
+// CertificateChain returns a single-element slice containing the leaf
+// certificate, or nil if no leaf has been stored. The software backend
+// does not track intermediates separately.
+func (k *softwareKey) CertificateChain() []*x509.Certificate {
+	cert := k.Certificate()
+	if cert == nil {
+		return nil
+	}
+	return []*x509.Certificate{cert}
+}
+
 func (k *softwareKey) String() string {
 	return fmt.Sprintf("%T(%s)", k.Signer, k.k)
 }

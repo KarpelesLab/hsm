@@ -37,10 +37,11 @@ import (
 //	                   hex byte). Default: discovered from the card.
 //	IDPRIME_ALGO_REF   optional override, hex byte. Default 54 (ECDSA).
 type IDPrime struct {
-	reader string
-	pin    string
-	aid    []byte
-	keys   []*idprimeKey
+	reader        string
+	pin           string
+	aid           []byte
+	keys          []*idprimeKey
+	intermediates []*x509.Certificate // shared chain bundle from msroots, if any
 }
 
 // NewIDPrime constructs an IDPrime HSM from environment variables.
@@ -122,13 +123,18 @@ func (h *IDPrime) loadExplicitKey(certPath string) (*idprimeKey, error) {
 
 // autoEnumerate walks the card and returns one idprimeKey per ECDSA
 // leaf cert with a matching on-card private key and a current validity
-// window.
+// window. As a side effect, it caches the card's msroots chain bundle
+// on h.intermediates so CertificateChain calls don't reopen the card.
 func (h *IDPrime) autoEnumerate() ([]*idprimeKey, error) {
 	var out []*idprimeKey
 	err := h.withCard(func(card *idprime.Card) error {
 		certs, err := card.EnumerateCerts()
 		if err != nil {
 			return err
+		}
+		// Best-effort: msroots may not exist on every card.
+		if ints, err := card.ReadIntermediates(); err == nil {
+			h.intermediates = ints
 		}
 		now := time.Now()
 		for _, ci := range certs {
@@ -153,7 +159,8 @@ func (h *IDPrime) autoEnumerate() ([]*idprimeKey, error) {
 }
 
 // discoverKeyRef opens a PIN-less card session and asks the applet
-// which on-card key reference matches the cert's public key.
+// which on-card key reference matches the cert's public key. As a side
+// effect, it caches the card's msroots chain bundle on h.intermediates.
 func (h *IDPrime) discoverKeyRef(cert *x509.Certificate) (byte, error) {
 	var ref byte
 	err := h.withCard(func(card *idprime.Card) error {
@@ -168,6 +175,9 @@ func (h *IDPrime) discoverKeyRef(cert *x509.Certificate) (byte, error) {
 		certs, err := card.EnumerateCerts()
 		if err != nil {
 			return err
+		}
+		if ints, err := card.ReadIntermediates(); err == nil {
+			h.intermediates = ints
 		}
 		for _, ci := range certs {
 			if ci.Cert.Equal(cert) {
@@ -286,6 +296,19 @@ func (k *idprimeKey) PublicBlob() ([]byte, error) {
 }
 
 func (k *idprimeKey) Certificate() *x509.Certificate { return k.cert }
+
+// CertificateChain returns the leaf certificate followed by any
+// intermediates the card published via msroots. The slice is freshly
+// allocated and safe for the caller to mutate.
+func (k *idprimeKey) CertificateChain() []*x509.Certificate {
+	if k.cert == nil {
+		return nil
+	}
+	out := make([]*x509.Certificate, 0, 1+len(k.parent.intermediates))
+	out = append(out, k.cert)
+	out = append(out, k.parent.intermediates...)
+	return out
+}
 
 func (k *idprimeKey) String() string {
 	return fmt.Sprintf("IDPrime Key(cn=%q sn=%s keyRef=0x%02X algoRef=0x%02X notAfter=%s)",

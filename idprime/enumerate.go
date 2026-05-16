@@ -7,6 +7,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -178,15 +179,123 @@ func (card *Card) EnumerateCerts() ([]CertInfo, error) {
 		if err != nil {
 			continue // no on-card private key matches this cert; skip
 		}
+		algoRef, err := card.GetKeyAlgoRef(keyRef)
+		if err != nil {
+			algoRef = DefaultAlgoRef
+		}
 		out = append(out, CertInfo{
 			Cert:      cert,
 			FID:       app.FID,
 			Container: container,
 			KeyRef:    keyRef,
-			AlgoRef:   DefaultAlgoRef,
+			AlgoRef:   algoRef,
 		})
 	}
 	return out, nil
+}
+
+// ErrNoMSRoots is returned by ReadMSRoots when the card does not carry
+// an msroots file in its cardapps directory.
+var ErrNoMSRoots = errors.New("idprime: no msroots file on card")
+
+// ReadMSRoots reads and decompresses the on-card "msroots" file, which
+// holds the Microsoft-minidriver-format CA chain as a degenerate PKCS#7
+// SignedData wrapper around the issuer/root certificates. Returns
+// ErrNoMSRoots when the file is not present.
+//
+// The applet must already be SELECTed.
+func (card *Card) ReadMSRoots() ([]byte, error) {
+	apps, err := card.ListCardApps()
+	if err != nil {
+		return nil, err
+	}
+	for _, app := range apps {
+		if app.Ext == "mscp" && app.Name == "msroots" {
+			raw, err := card.ReadFile(app.FID)
+			if err != nil {
+				return nil, fmt.Errorf("read msroots: %w", err)
+			}
+			return decompressCert(raw)
+		}
+	}
+	return nil, ErrNoMSRoots
+}
+
+// ReadIntermediates reads msroots and returns the embedded
+// intermediate/root certificates. Returns a nil slice (and no error)
+// when the card has no msroots file.
+//
+// The applet must already be SELECTed.
+func (card *Card) ReadIntermediates() ([]*x509.Certificate, error) {
+	der, err := card.ReadMSRoots()
+	if err != nil {
+		if errors.Is(err, ErrNoMSRoots) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return parsePKCS7Certificates(der)
+}
+
+// GetKeyAlgoRef queries the applet for the algorithm reference assigned
+// to a given private key (GET DATA, template B6, tag DF 3B). Returns the
+// single byte the card reports (e.g. 0x55 on the SafeNet eToken 5110+
+// FIPS we've sniffed).
+func (card *Card) GetKeyAlgoRef(keyRef byte) (byte, error) {
+	cmd := []byte{
+		0x00, 0xCB, 0x00, 0xFF, 0x08,
+		0xB6, 0x03, 0x83, 0x01, keyRef,
+		0xDF, 0x3B, 0x00,
+		0x00,
+	}
+	data, sw, err := card.TransmitChained(cmd)
+	if err != nil {
+		return 0, err
+	}
+	if sw != 0x9000 {
+		return 0, fmt.Errorf("GET DATA B6 key=%02X DF3B: SW=%04X", keyRef, sw)
+	}
+	val := findBERTag2(data, 0xDF, 0x3B)
+	if len(val) != 1 {
+		return 0, fmt.Errorf("DF3B value length %d (expected 1)", len(val))
+	}
+	return val[0], nil
+}
+
+// parsePKCS7Certificates extracts the certificates field from a
+// degenerate PKCS#7 SignedData ContentInfo (the format used by the
+// msroots file).
+func parsePKCS7Certificates(der []byte) ([]*x509.Certificate, error) {
+	var ci struct {
+		ContentType asn1.ObjectIdentifier
+		Content     asn1.RawValue `asn1:"explicit,tag:0"`
+	}
+	if _, err := asn1.Unmarshal(der, &ci); err != nil {
+		return nil, fmt.Errorf("parse ContentInfo: %w", err)
+	}
+	// 1.2.840.113549.1.7.2 = signedData
+	signedData := asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 2}
+	if !ci.ContentType.Equal(signedData) {
+		return nil, fmt.Errorf("msroots: unexpected contentType %v", ci.ContentType)
+	}
+	var sd struct {
+		Version          int
+		DigestAlgorithms asn1.RawValue `asn1:"set"`
+		EncapContentInfo asn1.RawValue
+		Certificates     asn1.RawValue `asn1:"optional,tag:0"`
+		CRLs             asn1.RawValue `asn1:"optional,tag:1"`
+		SignerInfos      asn1.RawValue `asn1:"set"`
+	}
+	if _, err := asn1.Unmarshal(ci.Content.Bytes, &sd); err != nil {
+		return nil, fmt.Errorf("parse SignedData: %w", err)
+	}
+	if len(sd.Certificates.Bytes) == 0 {
+		return nil, nil
+	}
+	// Certificates is [0] IMPLICIT SET OF Certificate; .Bytes is the
+	// concatenated cert SEQUENCEs, which is exactly what
+	// ParseCertificates wants.
+	return x509.ParseCertificates(sd.Certificates.Bytes)
 }
 
 // SelectValidCert returns the first enumerated certificate whose
