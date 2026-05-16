@@ -12,21 +12,21 @@ import (
 	"sync"
 )
 
-// pkcs1v15Pad builds a PKCS#1 v1.5 padded block of length k around the
-// supplied DigestInfo: 00 || 01 || PS (FF...FF) || 00 || di.
-func pkcs1v15Pad(di []byte, k int) ([]byte, error) {
-	if k < len(di)+11 {
-		return nil, fmt.Errorf("idprime: RSA modulus too small for digest (%d < %d)", k, len(di)+11)
+// rsaAlgoRefForHash maps a hash to the IDPrime "RSA-PKCS1-v1_5 with
+// hash" MSE SET DST algorithm reference. The card builds the
+// DigestInfo and does PKCS#1 v1.5 padding internally based on this
+// reference, so the right value must match the hash of the digest you
+// submit via PSO HASH.
+func rsaAlgoRefForHash(h crypto.Hash) (byte, bool) {
+	switch h {
+	case crypto.SHA256:
+		return 0x42, true
+	case crypto.SHA384:
+		return 0x43, true
+	case crypto.SHA512:
+		return 0x44, true
 	}
-	out := make([]byte, k)
-	out[0] = 0x00
-	out[1] = 0x01
-	for i := 2; i < k-len(di)-1; i++ {
-		out[i] = 0xFF
-	}
-	out[k-len(di)-1] = 0x00
-	copy(out[k-len(di):], di)
-	return out, nil
+	return 0, false
 }
 
 // Config configures a Signer.
@@ -150,7 +150,21 @@ func (s *Signer) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byt
 	if err := card.VerifyPIN(s.cfg.PIN, s.cfg.PINRef); err != nil {
 		return nil, err
 	}
-	if err := card.MSESetDST(s.cfg.AlgoRef, s.cfg.KeyRef); err != nil {
+
+	// For RSA, re-select the algoRef based on the hash unless the
+	// caller explicitly overrode it. The IDPrime "RSA + hash + PKCS#1"
+	// family encodes the hash in the algoRef (0x42/0x43/0x44).
+	algoRef := s.cfg.AlgoRef
+	if _, isRSA := s.cfg.Public.(*rsa.PublicKey); isRSA {
+		if s.cfg.AlgoRef == DefaultRSAAlgoRef || s.cfg.AlgoRef == 0 {
+			a, ok := rsaAlgoRefForHash(opts.HashFunc())
+			if !ok {
+				return nil, fmt.Errorf("idprime: unsupported RSA hash %s", opts.HashFunc())
+			}
+			algoRef = a
+		}
+	}
+	if err := card.MSESetDST(algoRef, s.cfg.KeyRef); err != nil {
 		return nil, err
 	}
 	defer card.Logout()
@@ -182,41 +196,20 @@ func signECDSA(card *Card, pub *ecdsa.PublicKey, digest []byte) ([]byte, error) 
 
 func signRSA(card *Card, pub *rsa.PublicKey, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	hash := opts.HashFunc()
-	prefix, ok := pkcs1v15HashPrefixes[hash]
-	if !ok {
-		return nil, fmt.Errorf("idprime: unsupported RSA hash %s", hash)
-	}
 	if len(digest) != hash.Size() {
 		return nil, fmt.Errorf("idprime: digest length %d does not match hash %s (%d)",
 			len(digest), hash, hash.Size())
 	}
-	di := make([]byte, 0, len(prefix)+len(digest))
-	di = append(di, prefix...)
-	di = append(di, digest...)
-	// IDPrime's default RSA algoRef (0x02) expects a fully PKCS#1 v1.5
-	// padded block of length == modulus byte size; the card performs the
-	// modular exponentiation and nothing else.
+	// Same APDU shape as ECDSA: PSO HASH then PSO COMPUTE. The
+	// hash-specific algoRef chosen at MSE time tells the card which
+	// DigestInfo prefix to wrap with before PKCS#1 v1.5 padding.
+	sig, err := card.PSOSign(digest)
+	if err != nil {
+		return nil, err
+	}
 	k := (pub.N.BitLen() + 7) / 8
-	padded, err := pkcs1v15Pad(di, k)
-	if err != nil {
-		return nil, err
-	}
-	sig, err := card.PSOSignRSA(padded)
-	if err != nil {
-		return nil, err
-	}
 	if len(sig) != k {
 		return nil, fmt.Errorf("idprime: RSA signature length %d (expected %d)", len(sig), k)
 	}
 	return sig, nil
-}
-
-// pkcs1v15HashPrefixes is the DigestInfo prefix for each supported hash,
-// matching the table inside crypto/rsa for PKCS#1 v1.5 signatures.
-var pkcs1v15HashPrefixes = map[crypto.Hash][]byte{
-	crypto.SHA1:   {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14},
-	crypto.SHA224: {0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1c},
-	crypto.SHA256: {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
-	crypto.SHA384: {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
-	crypto.SHA512: {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
 }
