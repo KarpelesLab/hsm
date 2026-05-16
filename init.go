@@ -12,6 +12,8 @@ func New() (HSM, error) {
 		return NewSoftwareHSM()
 	case "yubihsm2":
 		return NewYubiHSM2()
+	case "idprime":
+		return NewIDPrime()
 	}
 
 	return nil, errors.New("no HSM enabled, please run with HSM env variable")

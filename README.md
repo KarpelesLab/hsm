@@ -6,6 +6,9 @@ A Go library providing a unified interface for Hardware Security Module (HSM) op
 
 - Unified `HSM` interface for multiple backends
 - YubiHSM2 support via HTTP connector (SCP03 secure channel)
+- **IDPrime smart-card support** — pure-Go (no CGO, no closed PKCS#11) for
+  Thales/Gemalto IDPrime MD applets, e.g. SafeNet eToken 5110+ FIPS;
+  on-card cert enumeration + automatic key selection
 - Software HSM for development and testing (BoltDB-backed)
 - Key operations: listing, signing (ECDSA, EdDSA, RSA)
 - Certificate storage and retrieval
@@ -57,8 +60,14 @@ func main() {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `HSM` | HSM backend type: `software` or `yubihsm2` | (required) |
+| `HSM` | HSM backend type: `software`, `yubihsm2`, or `idprime` | (required) |
 | `YUBIHSM2_ADDR` | YubiHSM2 connector address | `localhost:12345` |
+| `IDPRIME_PIN` | IDPrime token user PIN (prompted on tty if absent) | — |
+| `IDPRIME_READER` | reader name substring match | first reader |
+| `IDPRIME_CERT` | path to PEM leaf cert (skips on-card enumeration) | — |
+| `IDPRIME_KEY_REF` | hex byte, on-card private-key reference (with `IDPRIME_CERT`) | discovered |
+| `IDPRIME_ALGO_REF` | hex byte, MSE:SET DST algorithm reference | `54` (ECDSA) |
+| `IDPRIME_AID` | applet AID, hex | IDPrime crypto applet |
 
 ### Software HSM
 
@@ -84,6 +93,32 @@ HSM=yubihsm2 ./myapp
 # Or with a custom connector address
 HSM=yubihsm2 YUBIHSM2_ADDR=192.168.1.100:12345 ./myapp
 ```
+
+### IDPrime smart card / SafeNet eToken
+
+Pure-Go driver for Thales / Gemalto IDPrime crypto applets (used by
+SafeNet eToken 5110+ FIPS, IDPrime MD, etc.). Talks to `pcscd` directly
+over its local Unix socket (`/run/pcscd/pcscd.comm`) — **no CGO, no
+PKCS#11 library, no closed-source dependencies at runtime**. Requires
+only `pcscd` (open-source pcsc-lite) running on the host.
+
+By default the library walks the card's on-disk cert directory
+(`cardapps` / `kxc##` files), decompresses each certificate, drops
+expired and CA-only entries, matches each leaf against an on-card
+private-key reference (via GET DATA template B6), and exposes the
+remaining ECDSA leaves as signing keys.
+
+```bash
+HSM=idprime IDPRIME_PIN=secret ./myapp
+
+# Or with a specific cert (skips enumeration):
+HSM=idprime IDPRIME_PIN=secret IDPRIME_CERT=./leaf.pem ./myapp
+```
+
+Supports ECDSA P-256, P-384, P-521. Verified against SafeNet eToken
+5110+ FIPS (Microsoft minidriver layout, INS 0x21 PIN verify, MSE 0x22
++ PSO 0x2A signing). RSA leaves are enumerated but the Signer path is
+ECDSA-only at present.
 
 ## API Reference
 
@@ -115,6 +150,10 @@ type Key interface {
 - **ECDSA**: P-256, P-384, P-521
 - **EdDSA**: Ed25519
 - **RSA**: 2048, 3072, 4096 (PKCS#1 and PSS signing)
+
+#### IDPrime
+- **ECDSA**: P-256, P-384, P-521 (signing path)
+- **RSA**: certificates enumerated; signing path not yet implemented
 
 #### Software HSM
 - **ECDSA**: P-256 (auto-generated keys)
